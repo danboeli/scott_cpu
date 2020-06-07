@@ -79,14 +79,14 @@ class MemoryBit(Bit):
 
     def update(self, set_bit, input_bit):
         # print("Updating bit state {} with set={} and input={}".format(self.state, set_bit, input_bit))
-        one = s_nand(set_bit, input_bit)
-        two = s_nand(set_bit, one)
+        one = s_nand(set_bit.state, input_bit.state)
+        two = s_nand(set_bit.state, one)
         four = s_nand(two, self.state)
         three = s_nand(one, four)
         self.state = three
 
 
-class Byte(Bit):
+class Byte:
     size = 8
 
     def __init__(self):
@@ -108,34 +108,28 @@ class Byte(Bit):
         return self.byte
 
 
-class MemoryByte:
-    size = 8
+class MemoryByte(Byte):
 
     def __init__(self):
         self.byte = [MemoryBit() for i in range(self.size)]
 
-    def report(self):
-        for y in np.arange(self.size):
-            print(int(self.byte[y].state), end=" ")
-        print("")
-
     def update(self, set_bit, input_byte):
         for y in np.arange(self.size):
-            self.byte[y].update(set_bit, int(input_byte.data[y]))
+            self.byte[y].update(set_bit, input_byte.byte[y])
 
-    def get_data(self):
-        out = np.zeros(self.size, dtype=np.bool)
+
+class Register(Byte):
+    def __init__(self):
+        super().__init__()
+        self.Enabler = Enabler()
+        self.Memory = MemoryByte()
+
+    def update(self, set_bit, enable_bit, input_byte):
+        self.Memory.update(set_bit, input_byte)
+        self.Enabler.update(self.Memory, enable_bit)
+
         for y in np.arange(self.size):
-            out[y] = self.byte[y].state
-        return out
-
-
-class Register(MemoryByte):
-    def get_data(self, enable_bit):
-        out = np.zeros(self.size)
-        for y in np.arange(self.size):
-            out[y] = s_and(int(enable_bit), int(self.byte[y].state))
-        return out
+            self.byte[y].update(self.Enabler.byte[y])
 
 
 class Nibble(Byte):
@@ -198,8 +192,8 @@ def decode4x16(in_bits):
     decode_size = 4
     in_p = np.zeros((decode_size, 2), dtype=np.bool)
     for y in np.arange(decode_size):
-        in_p[y][0] = in_bits[y]
-        in_p[y][1] = s_not(in_bits[y])
+        in_p[y][0] = in_bits.byte[y].state
+        in_p[y][1] = s_not(in_bits.byte[y].state)
 
     c_out = np.zeros(2 ** decode_size, dtype=np.bool)
 
@@ -223,15 +217,17 @@ def decode4x16(in_bits):
     return c_out
 
 
-def byte2nibble(byte):
+def byte2nibble(in_byte):
     n_out = [Nibble() for i in range(2)]
-    n_out[0].update(byte.get_data()[:4])
-    n_out[1].update(byte.get_data()[4:])
+    for y in range(4):
+        n_out[0].byte[y].update(in_byte.byte[y])
+        n_out[1].byte[y].update(in_byte.byte[y+4])
     return n_out
 
 
-def checkIfactive(a,b,x,y):
-    active = s_and(
+def checkIfactive(a, b, x, y):
+    active = Bit()
+    active.state = s_and(
         s_or16(
             s_and(a[0], x[0]),
             s_and(a[1], x[1]),
@@ -272,46 +268,36 @@ def checkIfactive(a,b,x,y):
     return active
 
 
-class RAMbyte(Register):
+class RAMbyte(Byte):
     #  Address is [0-15]x[0-15]
     size = 8
 
     def __init__(self, create_addr_x, create_addr_y):
-        self.byte = [MemoryBit() for i in range(self.size)]
-
-        self.addr_x = create_addr_x
-        self.addr_y = create_addr_y
+        super().__init__()
+        self.Reg = Register()
+        self.Active = Bit()
+        self.SetBit = ANDBit()
+        self.EnableBit = ANDBit()
+        self.addr_x = create_addr_x  # x address 0-15
+        self.addr_y = create_addr_y  # y address 0-15
         self.x = np.zeros(16, dtype=np.bool)
         self.x[self.addr_x] = True
         self.y = np.zeros(16, dtype=np.bool)
         self.y[self.addr_y] = True
 
-        # nibbles = byte2nibble(address)
-        # self.x = decode4x16(nibbles[0].get_data())  # unique 8-array
-        # self.y = decode4x16(nibbles[1].get_data())  # unique 8-array
-
-    def update(self, set_bit, input_byte, address):
+    def update(self, set_bit, enable_bit, input_byte, address):
         nibbles = byte2nibble(address)
-        addr_x = decode4x16(nibbles[0].get_data())  # unique 8-array
-        addr_y = decode4x16(nibbles[1].get_data())  # unique 8-array
+        addr_x = decode4x16(nibbles[0])  # unique 8-array
+        addr_y = decode4x16(nibbles[1])  # unique 8-array
 
-        active = checkIfactive(addr_x, addr_y, self.x, self.y)
+        self.Active.update(checkIfactive(addr_x, addr_y, self.x, self.y))
+        self.EnableBit.update(self.Active, enable_bit)
+        self.SetBit.update(self.Active, set_bit)
+
+        self.Reg.update(self.SetBit, self.EnableBit, input_byte)
 
         for y in np.arange(self.size):
-            self.byte[y].update(s_and(set_bit, active), int(input_byte.data[y]))
-
-    def get_data(self, enable_bit, address):
-        nibbles = byte2nibble(address)
-        addr_x = decode4x16(nibbles[0].get_data())  # unique 8-array
-        addr_y = decode4x16(nibbles[1].get_data())  # unique 8-array
-
-        active = checkIfactive(addr_x, addr_y, self.x, self.y)
-
-        self.out = Byte()
-
-        for y in np.arange(self.size):
-            self.out.byte[y].state = s_and(s_and(active, enable_bit), int(self.byte[y].state))
-        return out
+            self.byte[y].update(self.Reg.byte[y])
 
 
 class ANDBit(Bit):
@@ -332,30 +318,34 @@ class OR3Bit(Bit):
 def s_xor_byte(a, b):
     b_out = Byte()
     for x in range(8):
-        b_out.data[x] = s_xor(a.data[x], b.data[x])
+        b_out.byte[x].state = s_xor(a.byte[x].state, b.byte[x].state)
     return b_out
 
 
-class RAM256byte:
-    size = 16
+class RAM256byte(Byte):
+    AddressSize = 16
 
     def __init__(self):
-        self.RAM = [RAMbyte(x, y) for x, y in np.ndindex(self.size, self.size)]
+        super().__init__()
+        self.RAM = [RAMbyte(x, y) for x, y in np.ndindex(self.AddressSize, self.AddressSize)]
+        self.MAR = Register()
+        self.OutputOR = ORer()
+        self.Bit1 = Bit(1)
 
-    def update(self, set_bit, input_byte, address):
-        for x in range(self.size ** 2):
-            self.RAM[x].update(set_bit, input_byte, address)
+    def update(self, set_bit, enable_bit, input_byte, set_mar, address):
 
-    def get_data(self, enable_bit, address):
-        # cum_out = Byte()
-        cum_out = ORer()
-        c_out = Byte()
-        for x in range(self.size ** 2):
-            c_out = self.RAM[x].get_data(enable_bit, address)
-            cum_out.update(cum_out, c_out)
-        #     cum_out = s_or_byte(cum_out, c_out)
-        #
-        # return cum_out
+        self.MAR.update(set_mar, self.Bit1, address)
+        for x in range(self.AddressSize ** 2):
+            self.RAM[x].update(set_bit, enable_bit, input_byte, self.MAR)
+            self.OutputOR.update(self.OutputOR, self.RAM[x])
+
+        for y in range(self.size):
+            self.byte[y].update(self.OutputOR.byte[y])
+            self.OutputOR.byte[y].state = 0
+
+    def reportMAR(self):
+        for y in range(self.size-1, -1, -1):
+            self.MAR.byte[y].report(y)
 
 
 class RightShift(Byte):
@@ -572,13 +562,9 @@ tmp.report()
 tmp.initial_set(np.array([0, 1, 0, 1, 0, 1, 0, 1]))
 ZeroByte.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
 
-test = ORer()
-test.update(Bus, test)
-test.report()
-test.update(Bus, test)
-test.report()
-test.update(Bus, tmp)
-test.report()
+bit0 = Bit(0)
+bit1 = Bit(1)
+
 
 
 # op1 = Bit(0)
@@ -597,13 +583,22 @@ test.report()
 # MyBus1 = Bus1()
 # MyBus1.update(Bus, op1)
 # MyBus1.report()
-# MyRAM = RAM256byte()
-# AddressA = Byte()
-# AddressA.initial_set(np.array([1, 1, 1, 1, 1, 1, 1, 1]))
-#
-# AddressB = Byte()
-# AddressB.initial_set(np.array([0, 1, 1, 1, 1, 1, 1, 0]))
 
+MyRAM = RAM256byte()
+AddressA = Byte()
+AddressA.initial_set(np.array([1, 1, 1, 1, 0, 1, 1, 1]))
+
+AddressB = Byte()
+AddressB.initial_set(np.array([0, 1, 1, 1, 1, 1, 1, 0]))
+
+print("Bus:")
+Bus.report()
+print("Report RAM:")
+MyRAM.report()
+# def update(set_bit, enable_bit, input_byte, set_mar, address):
+MyRAM.update(bit0, bit0, ZeroByte, bit1, AddressA)
+MyRAM.report()
+MyRAM.reportMAR()
 
 # E1 = Enabler()
 # in_bit = Bit()
