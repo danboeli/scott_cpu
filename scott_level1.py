@@ -285,15 +285,10 @@ class RAMbyte(Byte):
         self.y = np.zeros(16, dtype=np.bool)
         self.y[self.addr_y] = True
 
-    def update(self, set_bit, enable_bit, input_byte, address):
-        nibbles = byte2nibble(address)
-        addr_x = decode4x16(nibbles[0])  # unique 8-array
-        addr_y = decode4x16(nibbles[1])  # unique 8-array
-
+    def update(self, set_bit, enable_bit, input_byte, addr_x, addr_y):
         self.Active.update(checkIfactive(addr_x, addr_y, self.x, self.y))
         self.EnableBit.update(self.Active, enable_bit)
         self.SetBit.update(self.Active, set_bit)
-
         self.Reg.update(self.SetBit, self.EnableBit, input_byte)
 
         for y in np.arange(self.size):
@@ -336,7 +331,10 @@ class RAM256byte(Byte):
 
         self.MAR.update(set_mar, self.Bit1, address)
         for x in range(self.AddressSize ** 2):
-            self.RAM[x].update(set_bit, enable_bit, input_byte, self.MAR)
+            nibbles = byte2nibble(self.MAR)
+            addr_x = decode4x16(nibbles[0])  # unique 8-array
+            addr_y = decode4x16(nibbles[1])  # unique 8-array
+            self.RAM[x].update(set_bit, enable_bit, input_byte, addr_x, addr_y)
             self.OutputOR.update(self.OutputOR, self.RAM[x])
 
         for y in range(self.size):
@@ -541,11 +539,24 @@ class ArithmeticAndLogicUnit(Byte):
 
 
 class Bus1(Byte):
-
     def update(self, in_byte, bus1_bit):
         self.byte[0].state = s_or(in_byte.byte[0].state, bus1_bit.state)
         for y in range(1, 8):
             self.byte[y].state=s_and(in_byte.byte[y].state, s_not(bus1_bit.state))
+
+
+def run_computer(run_time):
+    clock = Bit(0)
+    clock_delayed = Bit()
+    clock_set = Bit()
+    clock_enable = Bit()
+    for t in range(run_time):
+        clock_delayed.update(clock)
+        if (t % 2 == 0) & (t > 0):
+            clock.state = (clock.state + 1) % 2
+        clock_enable.state = s_or(clock.state, clock_delayed.state)
+        clock_set.state = s_and(clock.state, clock_delayed.state)
+        # print("Clock: {}, ClockD: {}, ClockS: {}, ClockE: {}".format(clock.state, clock_delayed.state, clock_set.state, clock_enable.state))
 
 
 # Declarations
@@ -565,7 +576,11 @@ ZeroByte.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
 bit0 = Bit(0)
 bit1 = Bit(1)
 
+Clock = Bit()
+ClockD = Bit()
+runtime = 30
 
+run_computer(runtime)
 
 # op1 = Bit(0)
 # op2 = Bit(1)
@@ -599,7 +614,12 @@ MyRAM.report()
 MyRAM.update(bit0, bit0, ZeroByte, bit1, AddressA)
 MyRAM.report()
 MyRAM.reportMAR()
-
+MyRAM.update(bit1, bit0, Bus, bit0, ZeroByte)
+MyRAM.report()
+MyRAM.reportMAR()
+MyRAM.update(bit0, bit1, ZeroByte, bit0, AddressA)
+MyRAM.report()
+MyRAM.reportMAR()
 # E1 = Enabler()
 # in_bit = Bit()
 # E1.report()
