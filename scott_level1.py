@@ -1,5 +1,7 @@
-#Simulation of the Scott CPU / Scott Computer
+# Simulation of the Scott CPU / Scott Computer
+
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # FUNDAMENTAL
@@ -545,7 +547,12 @@ class Bus1(Byte):
             self.byte[y].state=s_and(in_byte.byte[y].state, s_not(bus1_bit.state))
 
 
+class Stepper(Byte):
+    pass
+
+
 def run_computer(run_time):
+    t_clock = np.zeros(run_time, dtype=float)
     clock = Bit(0)
     clock_delayed = Bit()
     clock_set = Bit()
@@ -556,7 +563,9 @@ def run_computer(run_time):
             clock.state = (clock.state + 1) % 2
         clock_enable.state = s_or(clock.state, clock_delayed.state)
         clock_set.state = s_and(clock.state, clock_delayed.state)
+        t_clock[t] = clock.state
         # print("Clock: {}, ClockD: {}, ClockS: {}, ClockE: {}".format(clock.state, clock_delayed.state, clock_set.state, clock_enable.state))
+    return t_clock
 
 
 # Declarations
@@ -580,7 +589,9 @@ Clock = Bit()
 ClockD = Bit()
 runtime = 30
 
-run_computer(runtime)
+t_clock = run_computer(runtime)
+plt.plot(t_clock)
+plt.show()
 
 # op1 = Bit(0)
 # op2 = Bit(1)
