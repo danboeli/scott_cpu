@@ -107,7 +107,8 @@ class Byte:
             self.byte[y].report(y)
 
     def get_data(self):
-        return self.byte
+        # return self.byte
+        return [self.byte[i].state for i in range(self.size)]
 
 
 class MemoryByte(Byte):
@@ -300,6 +301,11 @@ class RAMbyte(Byte):
 class ANDBit(Bit):
     def update(self, a_bit, b_bit):
         self.state = s_not(s_nand(a_bit.state, b_bit.state))
+
+
+class NOTBit(Bit):
+    def update(self, a_bit):
+        self.state = s_not(a_bit.state)
 
 
 class ORBit(Bit):
@@ -548,50 +554,137 @@ class Bus1(Byte):
 
 
 class Stepper(Byte):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.Mem = [MemoryBit() for i in range(12)]
+        self.StepOR = ORBit()
+        self.StepAND = [ANDBit() for i in range(5)]
+        self.ClockOR = ORBit()
+        self.InvClockOR = ORBit()
+        self.InvClock = NOTBit()
+        self.NotReset = NOTBit()
+        self.Noter = [NOTBit() for i in range(6)]
+
+    def update(self, clock, reset):
+        self.NotReset.update(reset)
+        self.InvClock.update(clock)
+        self.ClockOR.update(clock, reset)
+        self.InvClockOR.update(self.InvClock, reset)
+
+        self.Mem[0].update(self.InvClockOR, self.NotReset)
+        self.Mem[1].update(self.ClockOR, self.Mem[0])
+        self.Noter[0].update(self.Mem[1])
+        self.StepOR.update(reset, self.Noter[0])
+        self.byte[0].update(self.StepOR)
+
+        self.Mem[2].update(self.InvClockOR, self.Mem[1])
+        self.Mem[3].update(self.ClockOR, self.Mem[2])
+        self.Noter[1].update(self.Mem[3])
+        self.StepAND[0].update(self.Mem[1], self.Noter[1])
+        self.byte[1].update(self.StepAND[0])
+
+        self.Mem[4].update(self.InvClockOR, self.Mem[3])
+        self.Mem[5].update(self.ClockOR, self.Mem[4])
+        self.Noter[2].update(self.Mem[5])
+        self.StepAND[1].update(self.Mem[3], self.Noter[2])
+        self.byte[2].update(self.StepAND[1])
+
+        self.Mem[6].update(self.InvClockOR, self.Mem[5])
+        self.Mem[7].update(self.ClockOR, self.Mem[6])
+        self.Noter[3].update(self.Mem[7])
+        self.StepAND[2].update(self.Mem[5], self.Noter[3])
+        self.byte[3].update(self.StepAND[2])
+
+        self.Mem[8].update(self.InvClockOR, self.Mem[7])
+        self.Mem[9].update(self.ClockOR, self.Mem[8])
+        self.Noter[4].update(self.Mem[9])
+        self.StepAND[3].update(self.Mem[7], self.Noter[4])
+        self.byte[4].update(self.StepAND[3])
+
+        self.Mem[10].update(self.InvClockOR, self.Mem[9])
+        self.Mem[11].update(self.ClockOR, self.Mem[10])
+        self.Noter[5].update(self.Mem[11])
+        self.StepAND[4].update(self.Mem[9], self.Noter[5])
+        self.byte[5].update(self.StepAND[4])
+        self.byte[6].update(self.Mem[11])
+
+
+def enhance_for_plot(xarray, run_time, inplot):
+    k = 0
+    time = np.zeros(2*(run_time-1)+1)
+    orray = np.zeros(2 * (run_time - 1) + 1)
+    for i in range(run_time):
+        if i == 0:
+            time[k] = i
+            orray[k] = xarray[i]
+            k = k + 1
+        else:
+            time[k] = i
+            orray[k] = xarray[i-1]
+            time[k + 1] = i
+            orray[k + 1] = xarray[i]
+            k = k + 2
+    plt.figure(inplot.number)
+    plt.plot(time, orray)
 
 
 def run_computer(run_time):
     t_clock = np.zeros(run_time, dtype=float)
-    clock = Bit(0)
+    test = np.zeros(run_time, dtype=float)
+    t_step = np.zeros([run_time, 8], dtype=float)
+    clock = Bit()
+    reset = Bit()
     clock_delayed = Bit()
     clock_set = Bit()
     clock_enable = Bit()
+    myStepper = Stepper()
+
     for t in range(run_time):
         clock_delayed.update(clock)
-        if (t % 2 == 0) & (t > 0):
+        if (t % 4 == 0):
             clock.state = (clock.state + 1) % 2
         clock_enable.state = s_or(clock.state, clock_delayed.state)
         clock_set.state = s_and(clock.state, clock_delayed.state)
+    # for t in range(run_time):
+    #     clock.state = (clock.state + 1) % 2
+        myStepper.update(clock, myStepper.byte[6])
         t_clock[t] = clock.state
-        # print("Clock: {}, ClockD: {}, ClockS: {}, ClockE: {}".format(clock.state, clock_delayed.state, clock_set.state, clock_enable.state))
-    return t_clock
+        t_step[t, :] = np.array(myStepper.get_data())
+        test[t] = np.array(myStepper.Mem[0].state)
+
+    oplot = plt.figure()
+
+    enhance_for_plot(t_clock, run_time, oplot)
+    enhance_for_plot(t_step[:, 0], run_time, oplot)
+    enhance_for_plot(t_step[:, 1], run_time, oplot)
+    enhance_for_plot(t_step[:, 6], run_time, oplot)
+
+    plt.axis([0, run_time, -0.1, 1.1])
+    plt.show()
 
 
 # Declarations
-ZeroByte = Byte()
-Bus = Byte()
-tmp = Byte()
+# ZeroByte = Byte()
+# Bus = Byte()
+# tmp = Byte()
 
 # TEST
-Bus.initial_set(np.array([0, 1, 0, 0, 0, 0, 1, 1]))
-print("Bus:")
-Bus.report()
-print("tmp:")
-tmp.report()
-tmp.initial_set(np.array([0, 1, 0, 1, 0, 1, 0, 1]))
-ZeroByte.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
+# Bus.initial_set(np.array([0, 1, 0, 0, 0, 0, 1, 1]))
+# print("Bus:")
+# Bus.report()
+# print("tmp:")
+# tmp.report()
+# tmp.initial_set(np.array([0, 1, 0, 1, 0, 1, 0, 1]))
+# ZeroByte.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
+#
+# bit0 = Bit(0)
+# bit1 = Bit(1)
+#
+# Clock = Bit()
+# ClockD = Bit()
 
-bit0 = Bit(0)
-bit1 = Bit(1)
-
-Clock = Bit()
-ClockD = Bit()
-runtime = 30
-
-t_clock = run_computer(runtime)
-plt.plot(t_clock)
-plt.show()
+runtime = 100
+run_computer(runtime)
 
 # op1 = Bit(0)
 # op2 = Bit(1)
@@ -610,27 +703,27 @@ plt.show()
 # MyBus1.update(Bus, op1)
 # MyBus1.report()
 
-MyRAM = RAM256byte()
-AddressA = Byte()
-AddressA.initial_set(np.array([1, 1, 1, 1, 0, 1, 1, 1]))
-
-AddressB = Byte()
-AddressB.initial_set(np.array([0, 1, 1, 1, 1, 1, 1, 0]))
-
-print("Bus:")
-Bus.report()
-print("Report RAM:")
-MyRAM.report()
-# def update(set_bit, enable_bit, input_byte, set_mar, address):
-MyRAM.update(bit0, bit0, ZeroByte, bit1, AddressA)
-MyRAM.report()
-MyRAM.reportMAR()
-MyRAM.update(bit1, bit0, Bus, bit0, ZeroByte)
-MyRAM.report()
-MyRAM.reportMAR()
-MyRAM.update(bit0, bit1, ZeroByte, bit0, AddressA)
-MyRAM.report()
-MyRAM.reportMAR()
+# MyRAM = RAM256byte()
+# AddressA = Byte()
+# AddressA.initial_set(np.array([1, 1, 1, 1, 0, 1, 1, 1]))
+#
+# AddressB = Byte()
+# AddressB.initial_set(np.array([0, 1, 1, 1, 1, 1, 1, 0]))
+#
+# print("Bus:")
+# Bus.report()
+# print("Report RAM:")
+# MyRAM.report()
+# # def update(set_bit, enable_bit, input_byte, set_mar, address):
+# MyRAM.update(bit0, bit0, ZeroByte, bit1, AddressA)
+# MyRAM.report()
+# MyRAM.reportMAR()
+# MyRAM.update(bit1, bit0, Bus, bit0, ZeroByte)
+# MyRAM.report()
+# MyRAM.reportMAR()
+# MyRAM.update(bit0, bit1, ZeroByte, bit0, AddressA)
+# MyRAM.report()
+# MyRAM.reportMAR()
 # E1 = Enabler()
 # in_bit = Bit()
 # E1.report()
