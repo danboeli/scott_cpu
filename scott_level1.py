@@ -567,8 +567,8 @@ class Stepper(Byte):
 
     def update(self, clock, reset):
         self.NotReset.update(reset)
-        self.InvClock.update(clock)
-        self.ClockOR.update(clock, reset)
+        self.InvClock.update(clock.clock)
+        self.ClockOR.update(clock.clock, reset)
         self.InvClockOR.update(self.InvClock, reset)
 
         self.Mem[0].update(self.InvClockOR, self.NotReset)
@@ -609,7 +609,7 @@ class Stepper(Byte):
         self.byte[6].update(self.Mem[11])
 
 
-def enhance_for_plot(xarray, run_time, inplot):
+def enhance_for_plot(xarray, run_time, inplot, *plotarg):
     k = 0
     time = np.zeros(2*(run_time-1)+1)
     orray = np.zeros(2 * (run_time - 1) + 1)
@@ -625,42 +625,75 @@ def enhance_for_plot(xarray, run_time, inplot):
             orray[k + 1] = xarray[i]
             k = k + 2
     plt.figure(inplot.number)
-    plt.plot(time, orray)
+    if plotarg.__len__() == 1:
+        plt.plot(time, orray, plotarg[0])
+    else:
+        plt.plot(time, orray)
+
+
+class Clock(Nibble):
+    def __init__(self):
+        super().__init__()
+        self.clock_delayed = Bit()
+        self.clock_set = Bit()
+        self.clock_enable = Bit()
+        self.clock = Bit()
+        self.time = 0
+
+    def update(self):
+        self.clock_delayed.update(self.clock)
+        if self.time % 4 == 0:
+            self.clock.state = (self.clock.state + 1) % 2
+        self.clock_enable.state = s_or(self.clock.state, self.clock_delayed.state)
+        self.clock_set.state = s_and(self.clock.state, self.clock_delayed.state)
+
+        self.time = self.time + 1
+
+        self.byte[0].update(self.clock)
+        self.byte[1].update(self.clock_delayed)
+        self.byte[2].update(self.clock_set)
+        self.byte[3].update(self.clock_enable)
+
+
+class ControlUnit(Byte):
+    size = 18
+
+    def __init__(self):
+        super(ControlUnit, self).__init__()
+        self.clock = Clock()
 
 
 def run_computer(run_time):
     t_clock = np.zeros(run_time, dtype=float)
-    test = np.zeros(run_time, dtype=float)
+    t_clock_set = np.zeros(run_time, dtype=float)
+    t_clock_enable = np.zeros(run_time, dtype=float)
     t_step = np.zeros([run_time, 8], dtype=float)
-    clock = Bit()
-    reset = Bit()
-    clock_delayed = Bit()
-    clock_set = Bit()
-    clock_enable = Bit()
+
+    my_clock = Clock()
     myStepper = Stepper()
 
     for t in range(run_time):
-        clock_delayed.update(clock)
-        if (t % 4 == 0):
-            clock.state = (clock.state + 1) % 2
-        clock_enable.state = s_or(clock.state, clock_delayed.state)
-        clock_set.state = s_and(clock.state, clock_delayed.state)
-    # for t in range(run_time):
-    #     clock.state = (clock.state + 1) % 2
-        myStepper.update(clock, myStepper.byte[6])
-        t_clock[t] = clock.state
+        my_clock.update()
+        myStepper.update(my_clock, myStepper.byte[6])
+        t_clock[t] = my_clock.clock.state
+        t_clock_set[t] = my_clock.clock_set.state
+        t_clock_enable[t] = my_clock.clock_enable.state
         t_step[t, :] = np.array(myStepper.get_data())
-        test[t] = np.array(myStepper.Mem[0].state)
 
     oplot = plt.figure()
 
-    enhance_for_plot(t_clock, run_time, oplot)
-    enhance_for_plot(t_step[:, 0], run_time, oplot)
-    enhance_for_plot(t_step[:, 1], run_time, oplot)
-    enhance_for_plot(t_step[:, 6], run_time, oplot)
+    for i in range(7):
+        enhance_for_plot(t_step[:, i], run_time, oplot)
+    enhance_for_plot(t_clock, run_time, oplot, 'r-')
+    enhance_for_plot(t_clock_set, run_time, oplot, 'b:')
+    enhance_for_plot(t_clock_enable, run_time, oplot, 'g:')
 
     plt.axis([0, run_time, -0.1, 1.1])
     plt.show()
+
+
+runtime = 100
+run_computer(runtime)
 
 
 # Declarations
@@ -682,9 +715,6 @@ def run_computer(run_time):
 #
 # Clock = Bit()
 # ClockD = Bit()
-
-runtime = 100
-run_computer(runtime)
 
 # op1 = Bit(0)
 # op2 = Bit(1)
