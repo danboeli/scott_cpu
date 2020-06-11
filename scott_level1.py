@@ -507,8 +507,8 @@ class ArithmeticAndLogicUnit(Byte):
         self.Decoder = Decoder3x8()
         self.Carry_out = OR3Bit()
 
-    def update(self, a_byte, b_byte, carry_bit, op1, op2, op3):
-        self.Decoder.update(op1, op2, op3)
+    def update(self, a_byte, b_byte, carry_bit, op):
+        self.Decoder.update(op[0], op[1], op[2])
 
         self.Comparer.update(a_byte, b_byte)
         self.Es[6].update(self.Comparer, self.Decoder.byte[6])
@@ -553,6 +553,30 @@ class Bus1(Byte):
             self.byte[y].state=s_and(in_byte.byte[y].state, s_not(bus1_bit.state))
 
 
+class Bus(Byte):
+    def reset(self):
+        for y in range(self.size):
+            self.byte[y].state = 0
+
+    def update(self, in_byte):
+
+        # Debug Section
+        selfsum = 0
+        testsum = 0
+        compsum = 0
+        for y in range(self.size):
+            selfsum = selfsum + self.byte[y].state
+            testsum = testsum + in_byte.byte[y].state
+            if self.byte[y].state != in_byte.byte[y].state:
+                compsum = compsum + 1
+        if (selfsum > 0) & (testsum > 0) & (compsum > 0):
+            print("Warning: Bus Override!")
+
+        # Functional Section
+        for y in range(self.size):
+            self.byte[y].state = s_or(in_byte.byte[y].state, self.byte[y].state)
+
+
 class Stepper(Byte):
     def __init__(self):
         super().__init__()
@@ -575,38 +599,38 @@ class Stepper(Byte):
         self.Mem[1].update(self.ClockOR, self.Mem[0])
         self.Noter[0].update(self.Mem[1])
         self.StepOR.update(reset, self.Noter[0])
-        self.byte[0].update(self.StepOR)
+        self.byte[1].update(self.StepOR)
 
         self.Mem[2].update(self.InvClockOR, self.Mem[1])
         self.Mem[3].update(self.ClockOR, self.Mem[2])
         self.Noter[1].update(self.Mem[3])
         self.StepAND[0].update(self.Mem[1], self.Noter[1])
-        self.byte[1].update(self.StepAND[0])
+        self.byte[2].update(self.StepAND[0])
 
         self.Mem[4].update(self.InvClockOR, self.Mem[3])
         self.Mem[5].update(self.ClockOR, self.Mem[4])
         self.Noter[2].update(self.Mem[5])
         self.StepAND[1].update(self.Mem[3], self.Noter[2])
-        self.byte[2].update(self.StepAND[1])
+        self.byte[3].update(self.StepAND[1])
 
         self.Mem[6].update(self.InvClockOR, self.Mem[5])
         self.Mem[7].update(self.ClockOR, self.Mem[6])
         self.Noter[3].update(self.Mem[7])
         self.StepAND[2].update(self.Mem[5], self.Noter[3])
-        self.byte[3].update(self.StepAND[2])
+        self.byte[4].update(self.StepAND[2])
 
         self.Mem[8].update(self.InvClockOR, self.Mem[7])
         self.Mem[9].update(self.ClockOR, self.Mem[8])
         self.Noter[4].update(self.Mem[9])
         self.StepAND[3].update(self.Mem[7], self.Noter[4])
-        self.byte[4].update(self.StepAND[3])
+        self.byte[5].update(self.StepAND[3])
 
         self.Mem[10].update(self.InvClockOR, self.Mem[9])
         self.Mem[11].update(self.ClockOR, self.Mem[10])
         self.Noter[5].update(self.Mem[11])
         self.StepAND[4].update(self.Mem[9], self.Noter[5])
-        self.byte[5].update(self.StepAND[4])
-        self.byte[6].update(self.Mem[11])
+        self.byte[6].update(self.StepAND[4])
+        self.byte[7].update(self.Mem[11])
 
 
 def enhance_for_plot(xarray, run_time, inplot, *plotarg):
@@ -655,12 +679,75 @@ class Clock(Nibble):
         self.byte[3].update(self.clock_enable)
 
 
+class Computer(Byte):
+    # size = 8
+    def __init__(self):
+        super().__init__()
+        self.R = [Register() for i in range(4)]
+        self.RAM = RAM256byte()
+        self.TMP = MemoryByte()
+        self.BUS1 = Bus1()
+        self.ALU = ArithmeticAndLogicUnit()
+        self.ACC = Register()
+        self.BUS = Bus()
+        self.Control = ControlUnit()
+
+    def update(self):
+        self.Control.update()
+        self.BUS.reset()
+
+        for i in range(2):
+            # Loop through this twice, in order to ensure that Bus can travel everywhere
+            self.R[0].update(self.Control.Set_R[0], self.Control.Enable_R[0], self.BUS)
+            self.BUS.update(self.R[0])
+
+            self.R[1].update(self.Control.Set_R[1], self.Control.Enable_R[1], self.BUS)
+            self.BUS.update(self.R[1])
+
+            self.R[2].update(self.Control.Set_R[2], self.Control.Enable_R[2], self.BUS)
+            self.BUS.update(self.R[2])
+            self.R[3].update(self.Control.Set_R[3], self.Control.Enable_R[3], self.BUS)
+            self.BUS.update(self.R[3])
+
+            self.TMP.update(self.Control.Set_TMP, self.BUS)
+            self.BUS1.update(self.TMP, self.Control.Bus1bit)
+
+            self.ALU.update(self.BUS, self.BUS1, self.Control.CarryIn, self.Control.ALU_OP)
+
+            self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
+            self.BUS.update(self.ACC)
+
+
 class ControlUnit(Byte):
     size = 18
 
     def __init__(self):
         super(ControlUnit, self).__init__()
         self.clock = Clock()
+        self.Stepper = Stepper()
+        self.Bus1bit = Bit()
+        self.Enable_RAM = ANDBit()
+        self.Enable_ACC = ANDBit()
+        self.Enable_R = [ANDBit() for i in range(4)]
+        self.Set_MAR = ANDBit()
+        self.Set_ACC = ANDBit()
+        self.Set_RAM = ANDBit()
+        self.Set_TMP = ANDBit()
+        self.Set_R = [ANDBit() for i in range(4)]
+        self.ALU_OP = [Bit() for i in range(3)]
+        self.CarryIn = Bit()
+
+    def update(self):
+        self.clock.update()
+        self.Stepper.update(self.clock, self.Stepper.byte[7])
+
+        self.Enable_ACC.update(self.clock.clock_enable, self.Stepper.byte[6])
+        self.Enable_R[0].update(self.clock.clock_enable, self.Stepper.byte[5])
+        self.Enable_R[1].update(self.clock.clock_enable, self.Stepper.byte[4])
+
+        self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[5])
+        self.Set_TMP.update(self.clock.clock_set, self.Stepper.byte[4])
+        self.Set_R[0].update(self.clock.clock_set, self.Stepper.byte[6])
 
 
 def run_computer(run_time):
@@ -669,27 +756,33 @@ def run_computer(run_time):
     t_clock_enable = np.zeros(run_time, dtype=float)
     t_step = np.zeros([run_time, 8], dtype=float)
 
-    my_clock = Clock()
-    myStepper = Stepper()
-
+    my_computer = Computer()
+    my_computer.R[0].Memory.initial_set(np.array([0, 1, 0, 0, 0, 0, 1, 1]))
+    my_computer.R[1].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
     for t in range(run_time):
-        my_clock.update()
-        myStepper.update(my_clock, myStepper.byte[6])
-        t_clock[t] = my_clock.clock.state
-        t_clock_set[t] = my_clock.clock_set.state
-        t_clock_enable[t] = my_clock.clock_enable.state
-        t_step[t, :] = np.array(myStepper.get_data())
+        print('--t= {}'.format(t))
+        print('Stepper = ', end='')
+        my_computer.Control.Stepper.report()
+        # print('R0 = ', end='')
+        # my_computer.R[0].Memory.report()
+        # print('Bus = ', end='')
+        # my_computer.BUS.report()
+        # print('tmp = ', end='')
+        # my_computer.TMP.report()
+        # print('acc = ', end='')
+        # my_computer.ACC.Memory.report()
+        my_computer.update()
+        t_clock[t] = my_computer.Control.clock.clock.state
+        t_step[t, :] = np.array(my_computer.Control.Stepper.get_data())
 
-    oplot = plt.figure()
-
-    for i in range(7):
-        enhance_for_plot(t_step[:, i], run_time, oplot)
-    enhance_for_plot(t_clock, run_time, oplot, 'r-')
-    enhance_for_plot(t_clock_set, run_time, oplot, 'b:')
-    enhance_for_plot(t_clock_enable, run_time, oplot, 'g:')
-
-    plt.axis([0, run_time, -0.1, 1.1])
-    plt.show()
+    # oplot = plt.figure()
+    #
+    # for i in range(1, 8):
+    #     enhance_for_plot(t_step[:, i], run_time, oplot)
+    # enhance_for_plot(t_clock, run_time, oplot, 'r-')
+    #
+    # plt.axis([0, run_time, -0.1, 1.1])
+    # plt.show()
 
 
 runtime = 100
