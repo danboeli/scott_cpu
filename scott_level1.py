@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import cProfile
 
 
 # FUNDAMENTAL
@@ -331,17 +332,21 @@ class RAM256byte(Byte):
     def __init__(self):
         super().__init__()
         self.RAM = [RAMbyte(x, y) for x, y in np.ndindex(self.AddressSize, self.AddressSize)]
-        self.MAR = Register()
+        self.MAR = MemoryByte()
         self.OutputOR = ORer()
+        self.Bit0 = Bit(0)
         self.Bit1 = Bit(1)
+        self.nibblex = Nibble()
+        self.nibbley = Nibble()
+
 
     def update(self, set_bit, enable_bit, input_byte, set_mar, address):
 
-        self.MAR.update(set_mar, self.Bit1, address)
+        self.MAR.update(set_mar, address)
+        self.nibblex, self.nibbley = byte2nibble(self.MAR)
+        addr_x = decode4x16(self.nibblex)  # unique 8-array
+        addr_y = decode4x16(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
-            nibbles = byte2nibble(self.MAR)
-            addr_x = decode4x16(nibbles[0])  # unique 8-array
-            addr_y = decode4x16(nibbles[1])  # unique 8-array
             self.RAM[x].update(set_bit, enable_bit, input_byte, addr_x, addr_y)
             self.OutputOR.update(self.OutputOR, self.RAM[x])
 
@@ -349,9 +354,18 @@ class RAM256byte(Byte):
             self.byte[y].update(self.OutputOR.byte[y])
             self.OutputOR.byte[y].state = 0
 
+
     def reportMAR(self):
         for y in range(self.size-1, -1, -1):
             self.MAR.byte[y].report(y)
+
+
+    def initial_RAM_set(self, address, data_input):
+        nibblex, nibbley = byte2nibble(address)
+        addr_x = decode4x16(nibblex)  # unique 8-array
+        addr_y = decode4x16(nibbley)  # unique 8-array
+        for x in range(self.AddressSize ** 2):
+            self.RAM[x].update(self.Bit1, self.Bit0, data_input, addr_x, addr_y)
 
 
 class RightShift(Byte):
@@ -690,6 +704,8 @@ class Computer(Byte):
         self.ALU = ArithmeticAndLogicUnit()
         self.ACC = Register()
         self.BUS = Bus()
+        self.IAR = Register()
+        self.IR = MemoryByte()
         self.Control = ControlUnit()
 
     def update(self):
@@ -698,6 +714,15 @@ class Computer(Byte):
 
         for i in range(2):
             # Loop through this twice, in order to ensure that Bus can travel everywhere
+            self.IAR.update(self.Control.Set_IAR, self.Control.Enable_IAR, self.BUS)
+            self.BUS.update(self.IAR)
+
+            self.IR.update(self.Control.Set_IR, self.BUS)
+
+            self.RAM.update(self.Control.Set_RAM, self.Control.Enable_RAM, self.BUS,
+                            self.Control.Set_MAR, self.BUS)
+            self.BUS.update(self.RAM)
+
             self.R[0].update(self.Control.Set_R[0], self.Control.Enable_R[0], self.BUS)
             self.BUS.update(self.R[0])
 
@@ -728,11 +753,14 @@ class ControlUnit(Byte):
         self.Bus1bit = Bit()
         self.Enable_RAM = ANDBit()
         self.Enable_ACC = ANDBit()
+        self.Enable_IAR = ANDBit()
         self.Enable_R = [ANDBit() for i in range(4)]
         self.Set_MAR = ANDBit()
         self.Set_ACC = ANDBit()
         self.Set_RAM = ANDBit()
         self.Set_TMP = ANDBit()
+        self.Set_IR = ANDBit()
+        self.Set_IAR = ANDBit()
         self.Set_R = [ANDBit() for i in range(4)]
         self.ALU_OP = [Bit() for i in range(3)]
         self.CarryIn = Bit()
@@ -741,28 +769,60 @@ class ControlUnit(Byte):
         self.clock.update()
         self.Stepper.update(self.clock, self.Stepper.byte[7])
 
-        self.Enable_ACC.update(self.clock.clock_enable, self.Stepper.byte[6])
-        self.Enable_R[0].update(self.clock.clock_enable, self.Stepper.byte[5])
-        self.Enable_R[1].update(self.clock.clock_enable, self.Stepper.byte[4])
+        self.Bus1bit.update(self.Stepper.byte[1])
+        self.Enable_IAR.update(self.clock.clock_enable, self.Stepper.byte[1])
+        self.Set_MAR.update(self.clock.clock_set, self.Stepper.byte[1])
+        self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[1])
 
-        self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[5])
-        self.Set_TMP.update(self.clock.clock_set, self.Stepper.byte[4])
-        self.Set_R[0].update(self.clock.clock_set, self.Stepper.byte[6])
+        self.Enable_RAM.update(self.clock.clock_enable, self.Stepper.byte[2])
+        self.Set_IR.update(self.clock.clock_set, self.Stepper.byte[2])
+
+        self.Enable_ACC.update(self.clock.clock_enable, self.Stepper.byte[3])
+        self.Set_IAR.update(self.clock.clock_set, self.Stepper.byte[3])
+
+        # Add Wiring
+        # self.Enable_ACC.update(self.clock.clock_enable, self.Stepper.byte[6])
+        # self.Enable_R[0].update(self.clock.clock_enable, self.Stepper.byte[5])
+        # self.Enable_R[1].update(self.clock.clock_enable, self.Stepper.byte[4])
+        # self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[5])
+        # self.Set_TMP.update(self.clock.clock_set, self.Stepper.byte[4])
+        # self.Set_R[0].update(self.clock.clock_set, self.Stepper.byte[6])
 
 
 def run_computer(run_time):
-    t_clock = np.zeros(run_time, dtype=float)
-    t_clock_set = np.zeros(run_time, dtype=float)
-    t_clock_enable = np.zeros(run_time, dtype=float)
-    t_step = np.zeros([run_time, 8], dtype=float)
+    # t_clock = np.zeros(run_time, dtype=float)
+    # t_clock_set = np.zeros(run_time, dtype=float)
+    # t_clock_enable = np.zeros(run_time, dtype=float)
+    # t_step = np.zeros([run_time, 8], dtype=float)
 
     my_computer = Computer()
-    my_computer.R[0].Memory.initial_set(np.array([0, 1, 0, 0, 0, 0, 1, 1]))
-    my_computer.R[1].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    Address = Byte()
+    Data = Byte()
+
+    Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
+    Data.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    my_computer.RAM.initial_RAM_set(Address, Data)
+
+    Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    Data.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    my_computer.RAM.initial_RAM_set(Address, Data)
+
+    # my_computer.R[1].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+
     for t in range(run_time):
         print('--t= {}'.format(t))
         print('Stepper = ', end='')
         my_computer.Control.Stepper.report()
+        print('IAR = ', end='')
+        my_computer.IAR.Memory.report()
+        print('IR = ', end='')
+        my_computer.IR.report()
+        # print('MAR = ', end='')
+        # my_computer.RAM.MAR.report()
+        # print('ACC_internal = ', end='')
+        # my_computer.ACC.Memory.report()
+        # print('ACC_external = ', end='')
+        # my_computer.ACC.report()
         # print('R0 = ', end='')
         # my_computer.R[0].Memory.report()
         # print('Bus = ', end='')
@@ -772,8 +832,8 @@ def run_computer(run_time):
         # print('acc = ', end='')
         # my_computer.ACC.Memory.report()
         my_computer.update()
-        t_clock[t] = my_computer.Control.clock.clock.state
-        t_step[t, :] = np.array(my_computer.Control.Stepper.get_data())
+        # t_clock[t] = my_computer.Control.clock.clock.state
+        # t_step[t, :] = np.array(my_computer.Control.Stepper.get_data())
 
     # oplot = plt.figure()
     #
@@ -785,106 +845,9 @@ def run_computer(run_time):
     # plt.show()
 
 
-runtime = 100
+runtime = 150
+pr = cProfile.Profile()
+pr.enable()
 run_computer(runtime)
-
-
-# Declarations
-# ZeroByte = Byte()
-# Bus = Byte()
-# tmp = Byte()
-
-# TEST
-# Bus.initial_set(np.array([0, 1, 0, 0, 0, 0, 1, 1]))
-# print("Bus:")
-# Bus.report()
-# print("tmp:")
-# tmp.report()
-# tmp.initial_set(np.array([0, 1, 0, 1, 0, 1, 0, 1]))
-# ZeroByte.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
-#
-# bit0 = Bit(0)
-# bit1 = Bit(1)
-#
-# Clock = Bit()
-# ClockD = Bit()
-
-# op1 = Bit(0)
-# op2 = Bit(1)
-# op3 = Bit(0)
-# carry = Bit(0)
-# ALU = ArithmeticAndLogicUnit()
-# ALU.update(tmp, Bus, carry, op1, op2, op3)
-# print("ALU: ")
-# ALU.report()
-# ALU.larger.report()
-# ALU.equal.report()
-# ALU.Carry_out.report()
-# ALU.Zero.report()
-
-# MyBus1 = Bus1()
-# MyBus1.update(Bus, op1)
-# MyBus1.report()
-
-# MyRAM = RAM256byte()
-# AddressA = Byte()
-# AddressA.initial_set(np.array([1, 1, 1, 1, 0, 1, 1, 1]))
-#
-# AddressB = Byte()
-# AddressB.initial_set(np.array([0, 1, 1, 1, 1, 1, 1, 0]))
-#
-# print("Bus:")
-# Bus.report()
-# print("Report RAM:")
-# MyRAM.report()
-# # def update(set_bit, enable_bit, input_byte, set_mar, address):
-# MyRAM.update(bit0, bit0, ZeroByte, bit1, AddressA)
-# MyRAM.report()
-# MyRAM.reportMAR()
-# MyRAM.update(bit1, bit0, Bus, bit0, ZeroByte)
-# MyRAM.report()
-# MyRAM.reportMAR()
-# MyRAM.update(bit0, bit1, ZeroByte, bit0, AddressA)
-# MyRAM.report()
-# MyRAM.reportMAR()
-# E1 = Enabler()
-# in_bit = Bit()
-# E1.report()
-# E1.update(Bus, in_bit)
-# E1.report()
-# print("Report Bus:")
-# Bus.report()
-
-# print("Report tmp:")
-# tmp.report()
-#
-#
-# Comparer = CompareByte()
-# Comparer.update(Bus, tmp)
-# print("Comparer: ")
-# Comparer.report()
-# Comparer.equal.report()
-# Comparer.larger.report()
-
-# Zero = Compare0()
-# Zero.update(Bus)
-# Zero.report()
-
-#
-# Adder = AddByte()
-# in_bit = Bit()
-# in_bit.state = 0
-#
-#
-# in_bit = Adder.update(Bus, tmp, in_bit)
-#
-# Adder.report()
-# in_bit.report()
-
-# tmp.update(Bus)
-# tmp.report()
-# shift_out = right_shift(tmp, in_bit)
-# tmp.report()
-# shift_out = left_shift(tmp, in_bit)
-# tmp.report()
-
+pr.disable()
+pr.print_stats(sort='cumtime')
