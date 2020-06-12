@@ -107,6 +107,10 @@ class Byte:
         for y in range(self.size-1, -1, -1):
             self.byte[y].report(y)
 
+    def report_byte(self):
+        for y in range(self.size):
+            self.byte[y].report(self.size-y-1)
+
     def get_data(self):
         # return self.byte
         return [self.byte[i].state for i in range(self.size)]
@@ -179,8 +183,6 @@ def decode3x8(in_bits):
 
 
 class Decoder3x8(Byte):
-    decode_size = 3
-
     def update(self, op1, op2, op3):
         self.byte[0].state = s_and3(s_not(op1.state), s_not(op2.state), s_not(op3.state))  # 0/0/0
         self.byte[1].state = s_and3(s_not(op1.state), s_not(op2.state), op3.state)  # 0/0/1
@@ -190,6 +192,14 @@ class Decoder3x8(Byte):
         self.byte[5].state = s_and3(op1.state, s_not(op2.state), op3.state)  # 1/0/1
         self.byte[6].state = s_and3(op1.state, op2.state, s_not(op3.state))  # 1/1/0
         self.byte[7].state = s_and3(op1.state, op2.state, op3.state)  # 1/1/1
+
+
+class Decoder2x4(Nibble):
+    def update(self, op1, op2):
+        self.byte[0].state = s_and(s_not(op1.state), s_not(op2.state))  # 0/0
+        self.byte[1].state = s_and(s_not(op1.state), op2.state)  # 0/1
+        self.byte[2].state = s_and(op1.state, s_not(op2.state))  # 1/0
+        self.byte[3].state = s_and(op1.state, op2.state)  # 1/1
 
 
 def decode4x16(in_bits):
@@ -787,6 +797,27 @@ class ControlUnit(Byte):
         # self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[5])
         # self.Set_TMP.update(self.clock.clock_set, self.Stepper.byte[4])
         # self.Set_R[0].update(self.clock.clock_set, self.Stepper.byte[6])
+
+
+def interpreter(cmd1, *cmd2):
+    out = Byte()
+    if cmd1 == 'ADD': out.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    if cmd1 == 'SHL': out.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))
+    if cmd1 == 'SHR': out.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    if cmd1 == 'NOT': out.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))
+    if cmd1 == 'AND': out.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
+    if cmd1 == 'OR': out.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))
+    if cmd1 == 'XOR': out.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))
+    if cmd1 == 'CMP': out.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))
+    if cmd2[0] == 'R0':    out.byte[4].state, out.byte[5].state = 0, 0
+    if cmd2[0] == 'R1':    out.byte[4].state, out.byte[5].state = 0, 1
+    if cmd2[0] == 'R2':    out.byte[4].state, out.byte[5].state = 1, 0
+    if cmd2[0] == 'R3':    out.byte[4].state, out.byte[5].state = 1, 1
+    if cmd2[1] == 'R0':    out.byte[6].state, out.byte[7].state = 0, 0
+    if cmd2[1] == 'R1':    out.byte[6].state, out.byte[7].state = 0, 1
+    if cmd2[1] == 'R2':    out.byte[6].state, out.byte[7].state = 1, 0
+    if cmd2[1] == 'R3':    out.byte[6].state, out.byte[7].state = 1, 1
+    return out
 
 
 def run_computer(run_time):
