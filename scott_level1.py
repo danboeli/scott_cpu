@@ -314,6 +314,12 @@ class ANDBit(Bit):
         self.state = s_not(s_nand(a_bit.state, b_bit.state))
 
 
+class AND3Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit):
+        self.state = s_and3(a_bit.state, b_bit.state, c_bit.state)
+
+
+
 class NOTBit(Bit):
     def update(self, a_bit):
         self.state = s_not(a_bit.state)
@@ -719,36 +725,41 @@ class Computer(Byte):
         self.Control = ControlUnit()
 
     def update(self):
-        self.Control.update()
+        self.Control.update(self.IR)
         self.BUS.reset()
 
         for i in range(2):
             # Loop through this twice, in order to ensure that Bus can travel everywhere
+
+            # IAR I/O connected to BUS
             self.IAR.update(self.Control.Set_IAR, self.Control.Enable_IAR, self.BUS)
             self.BUS.update(self.IAR)
 
+            # IR I/ connected to BUS, /O TBD
             self.IR.update(self.Control.Set_IR, self.BUS)
 
+            # RAM I/O connected to BUS
             self.RAM.update(self.Control.Set_RAM, self.Control.Enable_RAM, self.BUS,
                             self.Control.Set_MAR, self.BUS)
             self.BUS.update(self.RAM)
 
+            # R0-3 I/O connected to BUS
             self.R[0].update(self.Control.Set_R[0], self.Control.Enable_R[0], self.BUS)
             self.BUS.update(self.R[0])
-
             self.R[1].update(self.Control.Set_R[1], self.Control.Enable_R[1], self.BUS)
             self.BUS.update(self.R[1])
-
             self.R[2].update(self.Control.Set_R[2], self.Control.Enable_R[2], self.BUS)
             self.BUS.update(self.R[2])
             self.R[3].update(self.Control.Set_R[3], self.Control.Enable_R[3], self.BUS)
             self.BUS.update(self.R[3])
 
+            # TMP I/ connect to BUS, /O connected to BUS1
             self.TMP.update(self.Control.Set_TMP, self.BUS)
             self.BUS1.update(self.TMP, self.Control.Bus1bit)
-
+            # ALU I/ connected to BUS1, /O connected to ACC
             self.ALU.update(self.BUS, self.BUS1, self.Control.CarryIn, self.Control.ALU_OP)
 
+            # ACC I/ connected to ALU, /O connected to BUS
             self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
             self.BUS.update(self.ACC)
 
@@ -762,48 +773,101 @@ class ControlUnit(Byte):
         self.Stepper = Stepper()
         self.Bus1bit = Bit()
         self.Enable_RAM = ANDBit()
-        self.Enable_ACC = ANDBit()
         self.Enable_IAR = ANDBit()
-        self.Enable_R = [ANDBit() for i in range(4)]
+        self.Enable_RegA = ANDBit()
+        self.Enable_RegB = ANDBit()
+        self.Set_RegB = AND3Bit()
+        self.Enable_R = [ORBit() for i in range(4)]
+        self.Enable_RA = [AND3Bit() for i in range(4)]
+        self.Enable_RB = [AND3Bit() for i in range(4)]
+        self.Set_R = [AND3Bit() for i in range(4)]
         self.Set_MAR = ANDBit()
-        self.Set_ACC = ANDBit()
+        self.Set_ACC = ORBit()
+        self.Set_ACC_Advance_IAR = ANDBit()
+        self.Set_ACC_ALU_Operation = ANDBit()
+        self.Enable_ACC = ORBit()
+        self.Enable_ACC_Advance_IAR = ANDBit()
+        self.Enable_ACC_ALU_Operation = ANDBit()
         self.Set_RAM = ANDBit()
         self.Set_TMP = ANDBit()
         self.Set_IR = ANDBit()
         self.Set_IAR = ANDBit()
-        self.Set_R = [ANDBit() for i in range(4)]
-        self.ALU_OP = [Bit() for i in range(3)]
+        self.ALU_OP = [AND3Bit() for i in range(3)]
         self.CarryIn = Bit()
+        self.Decoder_RA = Decoder2x4()
+        self.Decoder_RB = Decoder2x4()
+        self.ALU_Instr_S6_NOT = NOTBit()
+        self.ALU_Instr_S6_AND = AND3Bit()
 
-    def update(self):
+    def update(self, IR):
         self.clock.update()
         self.Stepper.update(self.clock, self.Stepper.byte[7])
 
-        self.Bus1bit.update(self.Stepper.byte[1])
-        self.Enable_IAR.update(self.clock.clock_enable, self.Stepper.byte[1])
-        self.Set_MAR.update(self.clock.clock_set, self.Stepper.byte[1])
-        self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[1])
+        # Dynamic Register
+        self.Decoder_RA.update(IR.byte[4], IR.byte[5])
+        self.Decoder_RB.update(IR.byte[6], IR.byte[7])
+        self.Set_R[0].update(self.clock.clock_set, self.Decoder_RB.byte[0], self.Set_RegB)
+        self.Set_R[1].update(self.clock.clock_set, self.Decoder_RB.byte[1], self.Set_RegB)
+        self.Set_R[2].update(self.clock.clock_set, self.Decoder_RB.byte[2], self.Set_RegB)
+        self.Set_R[3].update(self.clock.clock_set, self.Decoder_RB.byte[3], self.Set_RegB)
+        self.Enable_RB[0].update(self.clock.clock_enable, self.Decoder_RB.byte[0], self.Enable_RegB)
+        self.Enable_RB[1].update(self.clock.clock_enable, self.Decoder_RB.byte[1], self.Enable_RegB)
+        self.Enable_RB[2].update(self.clock.clock_enable, self.Decoder_RB.byte[2], self.Enable_RegB)
+        self.Enable_RB[3].update(self.clock.clock_enable, self.Decoder_RB.byte[3], self.Enable_RegB)
+        self.Enable_RA[0].update(self.clock.clock_enable, self.Decoder_RA.byte[0], self.Enable_RegA)
+        self.Enable_RA[1].update(self.clock.clock_enable, self.Decoder_RA.byte[1], self.Enable_RegA)
+        self.Enable_RA[2].update(self.clock.clock_enable, self.Decoder_RA.byte[2], self.Enable_RegA)
+        self.Enable_RA[3].update(self.clock.clock_enable, self.Decoder_RA.byte[3], self.Enable_RegA)
+        self.Enable_R[0].update(self.Enable_RA[0], self.Enable_RB[0])
+        self.Enable_R[1].update(self.Enable_RA[1], self.Enable_RB[1])
+        self.Enable_R[2].update(self.Enable_RA[2], self.Enable_RB[2])
+        self.Enable_R[3].update(self.Enable_RA[3], self.Enable_RB[3])
 
-        self.Enable_RAM.update(self.clock.clock_enable, self.Stepper.byte[2])
-        self.Set_IR.update(self.clock.clock_set, self.Stepper.byte[2])
+        # Stepper Connections
+        # Step1: Set IAR to MAR and increment IAR by 1 which is stored in ACC
+        # Step2: Enable RAM to IR
+        # Step3: Enable ACC to IAR
+        # Step 4: Set RegB to TMP
+        # Step 5: ALU gets Orders, Reg A (+ TMP) are set to ACC
+        # Step 6: Acc is set to Reg B
 
-        self.Enable_ACC.update(self.clock.clock_enable, self.Stepper.byte[3])
-        self.Set_IAR.update(self.clock.clock_set, self.Stepper.byte[3])
+        self.Bus1bit.update(self.Stepper.byte[1]) # Step1
 
-        # Add Wiring
-        # self.Enable_ACC.update(self.clock.clock_enable, self.Stepper.byte[6])
-        # self.Enable_R[0].update(self.clock.clock_enable, self.Stepper.byte[5])
-        # self.Enable_R[1].update(self.clock.clock_enable, self.Stepper.byte[4])
-        # self.Set_ACC.update(self.clock.clock_set, self.Stepper.byte[5])
-        # self.Set_TMP.update(self.clock.clock_set, self.Stepper.byte[4])
-        # self.Set_R[0].update(self.clock.clock_set, self.Stepper.byte[6])
+        self.Enable_IAR.update(self.clock.clock_enable, self.Stepper.byte[1]) # Step1
+        self.Set_IAR.update(self.clock.clock_set, self.Stepper.byte[3])  # Step3
+
+        self.Set_IR.update(self.clock.clock_set, self.Stepper.byte[2])  # Step2
+
+        self.Set_MAR.update(self.clock.clock_set, self.Stepper.byte[1]) # Step1
+
+        self.Set_ACC_Advance_IAR.update(self.clock.clock_set, self.Stepper.byte[1]) # Step1
+        self.Set_ACC_ALU_Operation.update(self.Enable_RegA, self.clock.clock_set)  # Step5
+        self.Set_ACC.update(self.Set_ACC_ALU_Operation, self.Set_ACC_Advance_IAR)  # OR over Steps
+        self.Enable_ACC_Advance_IAR.update(self.clock.clock_enable, self.Stepper.byte[3])  # Step3
+        self.Enable_ACC_ALU_Operation.update(self.Set_RegB, self.clock.clock_enable)  # Step6
+        self.Enable_ACC.update(self.Enable_ACC_ALU_Operation, self.Enable_ACC_Advance_IAR)  # OR over Steps
+
+        self.Enable_RAM.update(self.clock.clock_enable, self.Stepper.byte[2])  # Step2
+
+        self.Set_TMP.update(self.Enable_RegB, self.clock.clock_set)  # Step4
+
+        self.ALU_Instr_S6_AND.update(IR.byte[1], IR.byte[2], IR.byte[3])  # Step6
+        self.ALU_Instr_S6_NOT.update(self.ALU_Instr_S6_AND)  # Step6
+
+        self.Enable_RegB.update(self.Stepper.byte[4], IR.byte[0])  # Step4
+        self.Enable_RegA.update(IR.byte[0], self.Stepper.byte[5])  # Step5
+        self.Set_RegB.update(self.Stepper.byte[6], IR.byte[0], self.ALU_Instr_S6_NOT)  # Step6
+
+        self.ALU_OP[0].update(IR.byte[0], self.Stepper.byte[5], IR.byte[1])  # Step5
+        self.ALU_OP[1].update(IR.byte[0], self.Stepper.byte[5], IR.byte[2])  # Step5
+        self.ALU_OP[2].update(IR.byte[0], self.Stepper.byte[5], IR.byte[3])  # Step5
 
 
 def interpreter(cmd1, *cmd2):
     out = Byte()
     if cmd1 == 'ADD': out.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
-    if cmd1 == 'SHL': out.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))
-    if cmd1 == 'SHR': out.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    if cmd1 == 'SHL': out.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1])) # Todo: Swap SHL / SHR??
+    if cmd1 == 'SHR': out.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1])) # Todo: Swap SHL / SHR??
     if cmd1 == 'NOT': out.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))
     if cmd1 == 'AND': out.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
     if cmd1 == 'OR': out.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))
@@ -830,15 +894,31 @@ def run_computer(run_time):
     Address = Byte()
     Data = Byte()
 
+    print('Commands stored in RAM')
     Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
-    Data.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    Data.update(interpreter('ADD', 'R0', 'R1'))
+    Data.report_byte()
     my_computer.RAM.initial_RAM_set(Address, Data)
 
     Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
-    Data.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    Data.update(interpreter('NOT', 'R0', 'R1'))
+    Data.report_byte()
     my_computer.RAM.initial_RAM_set(Address, Data)
 
-    # my_computer.R[1].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 0]))
+    Data.update(interpreter('SHR', 'R2', 'R3'))
+    Data.report_byte()
+    my_computer.RAM.initial_RAM_set(Address, Data)
+
+    Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
+    Data.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # no ALU Op
+    Data.report_byte()
+    my_computer.RAM.initial_RAM_set(Address, Data)
+
+    my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
+    my_computer.R[1].Memory.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    my_computer.R[2].Memory.initial_set(np.array([0, 0, 0, 1, 0, 0, 0, 1]))
+    my_computer.R[3].Memory.initial_set(np.array([0, 1, 0, 0, 0, 0, 0, 1]))
 
     for t in range(run_time):
         print('--t= {}'.format(t))
@@ -848,6 +928,14 @@ def run_computer(run_time):
         my_computer.IAR.Memory.report()
         print('IR = ', end='')
         my_computer.IR.report()
+        print('R0 = ', end='')
+        my_computer.R[0].Memory.report()
+        print('R1 = ', end='')
+        my_computer.R[1].Memory.report()
+        print('R2 = ', end='')
+        my_computer.R[2].Memory.report()
+        print('R3 = ', end='')
+        my_computer.R[3].Memory.report()
         # print('MAR = ', end='')
         # my_computer.RAM.MAR.report()
         # print('ACC_internal = ', end='')
