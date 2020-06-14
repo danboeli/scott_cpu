@@ -61,8 +61,6 @@ class Computer(Byte):
             self.BUS.update(self.ACC)
 
 
-
-
 class Interpreter(Byte):
     def update(self, cmd1, *cmd2):
         if cmd1 == 'ADD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
@@ -73,6 +71,8 @@ class Interpreter(Byte):
         if cmd1 == 'OR': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))
         if cmd1 == 'XOR': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))
         if cmd1 == 'CMP': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))
+        if cmd1 == 'LOAD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
+        if cmd1 == 'STORE': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))
         if cmd2[0] == 'R0':    self.byte[4].state, self.byte[5].state = 0, 0
         if cmd2[0] == 'R1':    self.byte[4].state, self.byte[5].state = 0, 1
         if cmd2[0] == 'R2':    self.byte[4].state, self.byte[5].state = 1, 0
