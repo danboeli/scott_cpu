@@ -132,9 +132,16 @@ class ControlUnit(Byte):
         self.Bus1bit = Bit()
         self.Enable_RAM = ORBit()
         self.Enable_IAR = ANDBit()
-        self.Enable_RegA = ANDBit()
-        self.Enable_RegB = ANDBit()
-        self.Set_RegB = AND3Bit()
+        self.Enable_RegA = ORBit()
+        self.LOAD_or_STORE = ORBit
+        self.Enable_RegA_ALU = ANDBit()
+        self.Enable_RegA_LOAD_STORE = ANDBit()
+        self.Enable_RegB = ORBit()
+        self.Enable_RegB_ALU = ANDBit()
+        self.Enable_RegB_STORE = ANDBit()
+        self.Set_RegB = ORBit
+        self.Set_RegB_ALU = AND3Bit()
+        self.Set_RegB_LOAD = ANDBit()
         self.Enable_R = [ORBit() for i in range(4)]
         self.Enable_RA = [AND3Bit() for i in range(4)]
         self.Enable_RB = [AND3Bit() for i in range(4)]
@@ -223,13 +230,16 @@ class ControlUnit(Byte):
         self.ALU_Instr_S6_AND.update(IR.byte[1], IR.byte[2], IR.byte[3])  # Step6   ALU
         self.ALU_Instr_S6_NOT.update(self.ALU_Instr_S6_AND)  # Step6    ALU
 
-        self.Enable_RegB.update(self.Stepper.byte[4], IR.byte[0])  # Step4  ALU todo OR 3
-        self.Enable_RegB.update(self.Stepper.byte[5], self.NonALUCodes[1])  # Step 5   STORE todo OR 3
-        self.Enable_RegA.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU todo OR
-        self.Enable_RegA.update(self.Stepper.byte[4], self.NonALUCodes[0])  # Step 4  LOAD todo OR
-        self.Enable_RegA.update(self.Stepper.byte[4], self.NonALUCodes[1])  # Step 4  STORE todo OR
-        self.Set_RegB.update(self.Stepper.byte[6], IR.byte[0], self.ALU_Instr_S6_NOT)  # Step6  ALU todo OR 2
-        self.Set_RegB.update(self.Stepper.byte[5], self.NonALUCodes[0])  # Step 5   LOAD    todo OR 2
+        self.Enable_RegB_ALU.update(self.Stepper.byte[4], IR.byte[0])  # Step4  ALU
+        self.Enable_RegB_STORE.update(self.Stepper.byte[5], self.NonALUCodes[1])  # Step 5   STORE
+        self.Enable_RegB.update(self.Enable_RegB_STORE, self.Enable_RegB_ALU)  # OR over Steps
+        self.LOAD_or_STORE.update(self.NonALUCodes[0], self.NonALUCodes[1])
+        self.Enable_RegA_ALU.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
+        self.Enable_RegA_LOAD_STORE.update(self.Stepper.byte[4], self.LOAD_or_STORE)  # Step 4  LOAD AND STORE
+        self.Enable_RegA.update(self.Enable_RegA_ALU, self.Enable_RegA_LOAD_STORE)
+        self.Set_RegB_ALU.update(self.Stepper.byte[6], IR.byte[0], self.ALU_Instr_S6_NOT)  # Step6  ALU
+        self.Set_RegB_LOAD.update(self.Stepper.byte[5], self.NonALUCodes[0])  # Step 5   LOAD
+        self.Set_RegB.update(self.Set_RegB_ALU, self.Set_RegB_LOAD)  # OR over Steps
 
         self.Set_ACC_Advance_IAR.update(self.clock.clock_set, self.Stepper.byte[1])  # Step1
         self.Set_ACC_ALU_Operation.update(self.Enable_RegA, self.clock.clock_set)  # Step5  ALU todo add Step
