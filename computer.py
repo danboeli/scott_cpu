@@ -126,7 +126,8 @@ def run_computer(run_time):
     booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to load initially to R1
     booter.update(my_computer, np.array([0, 0, 1, 0, 0, 1, 0, 1]))
 
-    # Boot to Register
+    # Boot to Register - THIS will be replaced by the DATA Instruction - boot goes to RAM an Registers are initialized
+    # from RAM via DATA instruction
     my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
     my_computer.R[3].Memory.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
     my_computer.R[2].Memory.initial_set(np.array([0, 0, 0, 1, 0, 0, 0, 1]))
