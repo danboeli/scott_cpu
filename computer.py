@@ -120,16 +120,18 @@ def run_computer(run_time):
     booter = BootProcess()
 
     # Boot to RAM
-    booter.update(my_computer, 'ADD', 'R0', 'R1')
-    booter.update(my_computer, 'NOT', 'R0', 'R1')
-    booter.update(my_computer, 'SHR', 'R2', 'R3')
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    booter.update(my_computer, 'LOAD', 'R0', 'R1')  # Load Add R0 to R1
+    booter.update(my_computer, 'ADD', 'R3', 'R1')  # Add R1 + R3 and store in R1
+    booter.update(my_computer, 'STORE', 'R2', 'R1')  # Store R1 at R2
+    booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to load initially to R1
+    booter.update(my_computer, np.array([0, 0, 1, 0, 0, 1, 0, 1]))
 
     # Boot to Register
-    my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
-    my_computer.R[1].Memory.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
+    my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
+    my_computer.R[3].Memory.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
     my_computer.R[2].Memory.initial_set(np.array([0, 0, 0, 1, 0, 0, 0, 1]))
-    my_computer.R[3].Memory.initial_set(np.array([0, 1, 0, 0, 0, 0, 0, 1]))
+
+    my_computer.RAM.report_Address()
 
     for t in range(run_time):
         print('--t= {}'.format(t))
@@ -147,6 +149,8 @@ def run_computer(run_time):
         my_computer.R[2].Memory.report()
         print('R3 = ', end='')
         my_computer.R[3].Memory.report()
+        # print('RAM@[0, 0, 0, 1, 0, 0, 0, 1] = ', end='')
+        # my_computer.RAM.report_Address(my_computer.R[2])
 
         my_computer.update()
 
