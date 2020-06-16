@@ -39,14 +39,13 @@ class RAM256byte(Byte):
         for x in range(self.AddressSize ** 2):
             self.RAM[x].update(self.Bit1, self.Bit0, data_input, addr_x, addr_y)
 
-    def report_Address(self):
-        # self.nibblex, self.nibbley = byte2nibble(address)
-        # addr_x = decode4x16(self.nibblex)  # unique 8-array
-        # addr_y = decode4x16(self.nibbley)  # unique 8-array
+    def report_Address(self, address):
+        self.nibblex, self.nibbley = byte2nibble(address)
+        addr_x = decode4x16(self.nibblex)  # unique 8-array
+        addr_y = decode4x16(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
-        #     if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
-            print('RAMx = {}: '.format(x))
-            self.RAM[x].Reg.Memory.report_byte()
+            if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
+                self.RAM[x].Reg.Memory.report()
 
 
 class ArithmeticAndLogicUnit(Byte):

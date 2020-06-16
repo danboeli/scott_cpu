@@ -131,8 +131,6 @@ def run_computer(run_time):
     my_computer.R[3].Memory.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
     my_computer.R[2].Memory.initial_set(np.array([0, 0, 0, 1, 0, 0, 0, 1]))
 
-    my_computer.RAM.report_Address()
-
     for t in range(run_time):
         print('--t= {}'.format(t))
         print('Stepper = ', end='')
@@ -149,8 +147,8 @@ def run_computer(run_time):
         my_computer.R[2].Memory.report()
         print('R3 = ', end='')
         my_computer.R[3].Memory.report()
-        # print('RAM@[0, 0, 0, 1, 0, 0, 0, 1] = ', end='')
-        # my_computer.RAM.report_Address(my_computer.R[2])
+        print('RAM@[0, 0, 0, 1, 0, 0, 0, 1] = ', end='')
+        my_computer.RAM.report_Address(my_computer.R[2].Memory)
 
         my_computer.update()
 
