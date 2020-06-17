@@ -73,6 +73,7 @@ class Interpreter(Byte):
         if cmd1 == 'CMP': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))
         if cmd1 == 'LOAD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
         if cmd1 == 'STORE': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))
+        if cmd1 == 'DATA': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))
         if cmd2[0] == 'R0':    self.byte[4].state, self.byte[5].state = 0, 0
         if cmd2[0] == 'R1':    self.byte[4].state, self.byte[5].state = 0, 1
         if cmd2[0] == 'R2':    self.byte[4].state, self.byte[5].state = 1, 0
@@ -118,19 +119,23 @@ def run_computer(run_time):
 
     my_computer = Computer()
     booter = BootProcess()
+    multitasker = Byte()
 
     # Boot to RAM
-    booter.update(my_computer, 'LOAD', 'R0', 'R1')  # Load Add R0 to R1
-    booter.update(my_computer, 'ADD', 'R3', 'R1')  # Add R1 + R3 and store in R1
-    booter.update(my_computer, 'STORE', 'R2', 'R1')  # Store R1 at R2
-    booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to load initially to R1
-    booter.update(my_computer, np.array([0, 0, 1, 0, 0, 1, 0, 1]))
+    booter.update(my_computer, 'DATA', 'Rx', 'R0')  # Load Data to R0 as Operand 1
+    booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to R0
+    booter.update(my_computer, 'DATA', 'Rx', 'R1')  # Load Data to R1 as Operand 2
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
+    booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
+    booter.update(my_computer, 'DATA', 'Rx', 'R2')  # Load Data to R2 as RAM Address
+    booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
+    booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2
+
+    multitasker.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     # Boot to Register - THIS will be replaced by the DATA Instruction - boot goes to RAM an Registers are initialized
     # from RAM via DATA instruction
-    my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
-    my_computer.R[3].Memory.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))
-    my_computer.R[2].Memory.initial_set(np.array([0, 0, 0, 1, 0, 0, 0, 1]))
+    # my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
 
     for t in range(run_time):
         print('--t= {}'.format(t))
@@ -148,8 +153,8 @@ def run_computer(run_time):
         my_computer.R[2].Memory.report()
         print('R3 = ', end='')
         my_computer.R[3].Memory.report()
-        print('RAM@[0, 0, 0, 1, 0, 0, 0, 1] = ', end='')
-        my_computer.RAM.report_Address(my_computer.R[2].Memory)
+        print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
+        my_computer.RAM.report_Address(multitasker)
 
         my_computer.update()
 
@@ -166,7 +171,7 @@ def run_computer(run_time):
     # plt.show()
 
 
-runtime = 150
+runtime = 250
 pr = cProfile.Profile()
 pr.enable()
 run_computer(runtime)
