@@ -26,6 +26,10 @@ def s_or3(a, b, c):
     return s_or(a, s_or(b, c))
 
 
+def s_or4(a, b, c, d):
+    return s_or(s_or(a, b), s_or(c, d))
+
+
 def s_or8(a1, a2, a3, a4, a5, a6, a7, a8):
     return s_or(
         a1,

@@ -49,6 +49,11 @@ class OR3Bit(Bit):
         self.state = s_or3(a_bit.state, b_bit.state, c_bit.state)
 
 
+class OR4Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit, d_bit):
+        self.state = s_or4(a_bit.state, b_bit.state, c_bit.state, d_bit.state)
+
+
 class AddBit(Bit):
 
     def __init__(self):

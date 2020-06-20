@@ -138,10 +138,11 @@ class ControlUnit(Byte):
         self.clock = Clock()
         self.Stepper = Stepper()
         self.Bus1bit = ORBit()
-        self.Enable_RAM = OR3Bit()
-        self.Enable_IAR = ORBit()
+        self.Enable_RAM = OR4Bit()
+        self.Enable_IAR = OR3Bit()
         self.Enable_IAR_DATA = ANDBit()
         self.Enable_IAR_IAR_ADV = ANDBit()
+        self.Enable_IAR_JUMP = ANDBit()
         self.Enable_RegA = ORBit()
         self.LOAD_or_STORE = ORBit()
         self.Enable_RegA_ALU = ANDBit()
@@ -149,7 +150,7 @@ class ControlUnit(Byte):
         self.Enable_RegB = OR3Bit()
         self.Enable_RegB_ALU = ANDBit()
         self.Enable_RegB_STORE = ANDBit()
-        self.Enable_RegB_JUMP = ANDBit()
+        self.Enable_RegB_JMPR = ANDBit()
         self.Set_RegB = OR3Bit()
         self.Set_RegB_ALU = AND3Bit()
         self.Set_RegB_LOAD = ANDBit()
@@ -158,7 +159,7 @@ class ControlUnit(Byte):
         self.Enable_RA = [AND3Bit() for i in range(4)]
         self.Enable_RB = [AND3Bit() for i in range(4)]
         self.Set_R = [AND3Bit() for i in range(4)]
-        self.Set_MAR = OR3Bit()
+        self.Set_MAR = OR4Bit()
         self.Set_ACC = OR3Bit()
         self.Set_ACC_Advance_IAR = ANDBit()
         self.Set_ACC_DATA = ANDBit()
@@ -170,8 +171,9 @@ class ControlUnit(Byte):
         self.Set_RAM = ANDBit()
         self.Set_TMP = ANDBit()
         self.Set_IR = ANDBit()
-        self.Set_IAR = OR3Bit()
+        self.Set_IAR = OR4Bit()
         self.Set_IAR_DATA = ANDBit()
+        self.Set_IAR_JMPR = ANDBit()
         self.Set_IAR_JUMP = ANDBit()
         self.Set_IAR_IAR_ADV = ANDBit()
         self.ALU_OP = [AND3Bit() for i in range(3)]
@@ -186,13 +188,17 @@ class ControlUnit(Byte):
         self.Set_MAR_ADVANCE_IAR = ANDBit()
         self.Set_MAR_LOAD_and_STORE = ANDBit()
         self.Set_MAR_DATA = ANDBit()
+        self.Set_MAR_JUMP = ANDBit()
         self.Enable_RAM_ADVANCE_IAR = ANDBit()
         self.Enable_RAM_LOAD = ANDBit()
+        self.Enable_RAM_JUMP = ANDBit()
         self.Enable_RAM_DATA = ANDBit()
         self.AND_STEP4_DATA = ANDBit()
         self.AND_STEP5_DATA = ANDBit()
         self.AND_STEP6_DATA = ANDBit()
+        self.AND_STEP4_JMPR = ANDBit()
         self.AND_STEP4_JUMP = ANDBit()
+        self.AND_STEP5_JUMP = ANDBit()
 
     def update(self, IR):
         self.clock.update()
@@ -225,10 +231,16 @@ class ControlUnit(Byte):
         # DATA Step 4: Set Bit1, Enable IAR to MAR and ACC(=IAR+Bit1)
         # DATA Step 5: Enable RAM to RegB
         # DATA Step 6: Enable ACC to IAR
-        # JUMP Step 4: Enable RegB to IAR
+        # JMPR Step 4: Enable RegB to IAR
+        # JUMP Step 4: Enable IAR to MAR
+        # JUMP Step 5: Enable RAM to IAR
 
-        #  Jump Instruction
-        self.AND_STEP4_JUMP.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JUMP
+        #  JMPR Instruction
+        self.AND_STEP4_JMPR.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JMPR
+
+        #  JUMP Instruction
+        self.AND_STEP4_JUMP.update(self.Stepper.byte[4], self.NonALUCodes[4])  # Step 4 JUMP
+        self.AND_STEP5_JUMP.update(self.Stepper.byte[5], self.NonALUCodes[4])  # Step 5 JUMP
 
         #  DATA INSTRUCTION
         self.AND_STEP4_DATA.update(self.Stepper.byte[4], self.NonALUCodes[2])  # Step 4 DATA
@@ -238,13 +250,15 @@ class ControlUnit(Byte):
         self.Bus1bit.update(self.Stepper.byte[1], self.AND_STEP4_DATA)  # Step1 IAR ADVANCE _OR_ Step 4 DATA
 
         self.Enable_IAR_DATA.update(self.clock.clock_enable, self.AND_STEP4_DATA)  # Step 4 DATA
+        self.Enable_IAR_JUMP.update(self.clock.clock_enable, self.AND_STEP4_JUMP)  # Step 4 JUMP
         self.Enable_IAR_IAR_ADV.update(self.clock.clock_enable, self.Stepper.byte[1])  # Step1 IAR ADVANCE
-        self.Enable_IAR.update(self.Enable_IAR_DATA, self.Enable_IAR_IAR_ADV)
+        self.Enable_IAR.update(self.Enable_IAR_DATA, self.Enable_IAR_IAR_ADV, self.Enable_IAR_JUMP)
 
         self.Set_IAR_IAR_ADV.update(self.clock.clock_set, self.Stepper.byte[3])  # Step3 IAR ADVANCE
         self.Set_IAR_DATA.update(self.clock.clock_set, self.AND_STEP6_DATA)  # Step 6 DATA
-        self.Set_IAR_JUMP.update(self.clock.clock_set, self.AND_STEP4_JUMP)  # Step 4 JUMP
-        self.Set_IAR.update(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA, self.Set_IAR_JUMP)
+        self.Set_IAR_JMPR.update(self.clock.clock_set, self.AND_STEP4_JMPR)  # Step 4 JMPR
+        self.Set_IAR_JUMP.update(self.clock.clock_set, self.AND_STEP5_JUMP)  # Step 5 JUMP
+        self.Set_IAR.update(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA, self.Set_IAR_JMPR, self.Set_IAR_JUMP)
 
         self.Set_IR.update(self.clock.clock_set, self.Stepper.byte[2])  # Step2
 
@@ -253,8 +267,8 @@ class ControlUnit(Byte):
 
         self.Enable_RegB_ALU.update(self.Stepper.byte[4], IR.byte[0])  # Step4  ALU
         self.Enable_RegB_STORE.update(self.Stepper.byte[5], self.NonALUCodes[1])  # Step 5   STORE
-        self.Enable_RegB_JUMP.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JUMP
-        self.Enable_RegB.update(self.Enable_RegB_STORE, self.Enable_RegB_ALU, self.Enable_RegB_JUMP)  # OR over Steps
+        self.Enable_RegB_JMPR.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JMPR
+        self.Enable_RegB.update(self.Enable_RegB_STORE, self.Enable_RegB_ALU, self.Enable_RegB_JMPR)  # OR over Steps
         self.LOAD_or_STORE.update(self.NonALUCodes[0], self.NonALUCodes[1])
         self.Enable_RegA_ALU.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
         self.Enable_RegA_LOAD_STORE.update(self.Stepper.byte[4], self.LOAD_or_STORE)  # Step 4  LOAD AND STORE
@@ -278,12 +292,14 @@ class ControlUnit(Byte):
         self.Set_MAR_ADVANCE_IAR.update(self.clock.clock_set, self.Stepper.byte[1])  # Step1
         self.Set_MAR_LOAD_and_STORE.update(self.clock.clock_set, self.Enable_RegA_LOAD_STORE)  # Step 4  LOAD and STORE
         self.Set_MAR_DATA.update(self.clock.clock_set, self.AND_STEP4_DATA)  # Step 4 DATA
-        self.Set_MAR.update(self.Set_MAR_ADVANCE_IAR, self.Set_MAR_LOAD_and_STORE, self.Set_MAR_DATA)  # OR over Steps
+        self.Set_MAR_JUMP.update(self.clock.clock_set, self.AND_STEP4_JUMP)  # Step 4 JUMP
+        self.Set_MAR.update(self.Set_MAR_ADVANCE_IAR, self.Set_MAR_LOAD_and_STORE, self.Set_MAR_DATA, self.Set_MAR_JUMP)  # OR over Steps
 
         self.Enable_RAM_DATA.update(self.clock.clock_enable, self.AND_STEP5_DATA)  # Step 5 DATA
         self.Enable_RAM_ADVANCE_IAR.update(self.clock.clock_enable, self.Stepper.byte[2])  # Step2
         self.Enable_RAM_LOAD.update(self.clock.clock_enable, self.Set_RegB_LOAD)  # Step 5    LOAD
-        self.Enable_RAM.update(self.Enable_RAM_ADVANCE_IAR, self.Enable_RAM_LOAD, self.Enable_RAM_DATA)  # OR over Steps
+        self.Enable_RAM_JUMP.update(self.clock.clock_enable, self.AND_STEP5_JUMP)  # Step 5    JUMP
+        self.Enable_RAM.update(self.Enable_RAM_ADVANCE_IAR, self.Enable_RAM_LOAD, self.Enable_RAM_DATA, self.Enable_RAM_JUMP)  # OR over Steps
 
         self.Set_RAM.update(self.Enable_RegB_STORE, self.clock.clock_set)  # Step 5    STORE
 

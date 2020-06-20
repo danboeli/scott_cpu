@@ -63,26 +63,29 @@ class Computer(Byte):
 
 class Interpreter(Byte):
     def update(self, cmd1, *cmd2):
-        if cmd1 == 'ADD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
-        if cmd1 == 'SHL': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # Todo: Swap SHL / SHR??
-        if cmd1 == 'SHR': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # Todo: Swap SHL / SHR??
-        if cmd1 == 'NOT': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))
-        if cmd1 == 'AND': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
-        if cmd1 == 'OR': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))
-        if cmd1 == 'XOR': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))
-        if cmd1 == 'CMP': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))
-        if cmd1 == 'LOAD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # Load RB from RAM Address RA
-        if cmd1 == 'STORE': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # Store RB at RAM Address RA
-        if cmd1 == 'DATA': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Next Byte in RAM is data, store this in RB
-        if cmd1 == 'JUMP': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # Next go to the RAM Address stored in RB
-        if cmd2[0] == 'R0':    self.byte[4].state, self.byte[5].state = 0, 0
-        if cmd2[0] == 'R1':    self.byte[4].state, self.byte[5].state = 0, 1
-        if cmd2[0] == 'R2':    self.byte[4].state, self.byte[5].state = 1, 0
-        if cmd2[0] == 'R3':    self.byte[4].state, self.byte[5].state = 1, 1
-        if cmd2[1] == 'R0':    self.byte[6].state, self.byte[7].state = 0, 0
-        if cmd2[1] == 'R1':    self.byte[6].state, self.byte[7].state = 0, 1
-        if cmd2[1] == 'R2':    self.byte[6].state, self.byte[7].state = 1, 0
-        if cmd2[1] == 'R3':    self.byte[6].state, self.byte[7].state = 1, 1
+        if cmd1 == 'ADD':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # ALU 0
+        if cmd1 == 'AND':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # ALU 1
+        if cmd1 == 'SHR':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # ALU 2 Todo: Swap SHL / SHR??
+        if cmd1 == 'XOR':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # ALU 3
+        if cmd1 == 'SHL':       self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # ALU 4 Todo: Swap SHL / SHR??
+        if cmd1 == 'OR':        self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # ALU 5
+        if cmd1 == 'NOT':       self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))  # ALU 6
+        if cmd1 == 'CMP':       self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))  # ALU 7
+
+        if cmd1 == 'LOAD':      self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # CMD 0 Load RB from RAM Address RA
+        if cmd1 == 'JUMP':      self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # CMD 1 Next go to the RAM Address stored in next Byte
+        if cmd1 == 'DATA':      self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # CMD 2 Next Byte in RAM is data, store this in RB
+        if cmd1 == 'STORE':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # CMD 4 Store RB at RAM Address RA
+        if cmd1 == 'JMPR':      self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
+
+        if cmd2[0] == 'R0':     self.byte[4].state, self.byte[5].state = 0, 0
+        if cmd2[0] == 'R1':     self.byte[4].state, self.byte[5].state = 0, 1
+        if cmd2[0] == 'R2':     self.byte[4].state, self.byte[5].state = 1, 0
+        if cmd2[0] == 'R3':     self.byte[4].state, self.byte[5].state = 1, 1
+        if cmd2[1] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
+        if cmd2[1] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
+        if cmd2[1] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
+        if cmd2[1] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
         
 
 class BootProcess:
@@ -120,7 +123,7 @@ def run_computer(run_time):
 
     my_computer = Computer()
     booter = BootProcess()
-    multitasker = Byte()
+    multi_purpose_byte = Byte()
 
     # Boot to RAM
     booter.update(my_computer, 'DATA', 'Rx', 'R0')  # Load Data to R0 as Operand 1
@@ -131,11 +134,12 @@ def run_computer(run_time):
     booter.update(my_computer, 'DATA', 'Rx', 'R2')  # Load Data to R2 as RAM Address
     booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
     booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
-    booter.update(my_computer, 'DATA', 'Rx', 'R3')  # Load Data to R3 as RAM Address
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Data to R3 which is RAM Address for JUMP
-    booter.update(my_computer, 'JUMP', 'Rx', 'R3')
-
-    multitasker.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
+    booter.update(my_computer, 'JUMP', 'Rx', 'Rx')  # JUMP to Address stored in next byte
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Address to which we JUMP
+    # booter.update(my_computer, 'DATA', 'Rx', 'R3')  # Load Data to R3 as RAM Address
+    # booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Data to R3 which is RAM Address for JUMP
+    
+    multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     for t in range(run_time):
         if t % 49 == 0:
@@ -155,7 +159,7 @@ def run_computer(run_time):
             print('R3 = ', end='')
             my_computer.R[3].Memory.report()
             print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
-            my_computer.RAM.report_Address(multitasker)
+            my_computer.RAM.report_Address(multi_purpose_byte)
 
         my_computer.update()
 
