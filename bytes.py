@@ -161,7 +161,8 @@ class AddByte(Byte):
     def update(self, input_byte_a, input_byte_b, carry_in):
         self.carry_out.update(carry_in)
         for y in range(self.size):
-            self.carry_out.update(self.byte[y].update(self.carry_out, input_byte_a.byte[y], input_byte_b.byte[y]))
+            self.byte[y].update(self.carry_out, input_byte_a.byte[y], input_byte_b.byte[y])
+            self.carry_out.update(self.byte[y].carry_out)
 
 
 class Bus1(Byte):

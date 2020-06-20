@@ -23,7 +23,7 @@ class Computer(Byte):
         self.Flags = FlagRegister()
 
     def update(self):
-        self.Control.update(self.IR)
+        self.Control.update(self.IR, self.Flags)
         self.BUS.reset()
 
         for i in range(2):
@@ -56,10 +56,8 @@ class Computer(Byte):
             self.BUS1.update(self.TMP, self.Control.Bus1bit)
             # ALU I/ connected to BUS1, /O connected to ACC
             self.ALU.update(self.BUS, self.BUS1, self.Flags.Carry, self.Control.ALU_OP)
-
             # FLAG I/ connected to ALU flags, /O connected to CU
-            self.Flags.update(self.Control.Set_Flags, self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
-
+            self.Flags.update(self.Control.Set_Flags, self.Control.Enable_Flags, self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
             # ACC I/ connected to ALU, /O connected to BUS
             self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
             self.BUS.update(self.ACC)
@@ -79,17 +77,25 @@ class Interpreter(Byte):
         if cmd1 == 'LOAD':      self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # CMD 0 Load RB from RAM Address RA
         if cmd1 == 'JUMP':      self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # CMD 1 Next go to the RAM Address stored in next Byte
         if cmd1 == 'DATA':      self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # CMD 2 Next Byte in RAM is data, store this in RB
+        if cmd1 == 'CLF':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # CMD 3 Clear Flags
         if cmd1 == 'STORE':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # CMD 4 Store RB at RAM Address RA
+        if cmd1 == 'JMPIF':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 0]))  # CMD 5 Jump if to next RAM Address
         if cmd1 == 'JMPR':      self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
 
-        if cmd2[0] == 'R0':     self.byte[4].state, self.byte[5].state = 0, 0
-        if cmd2[0] == 'R1':     self.byte[4].state, self.byte[5].state = 0, 1
-        if cmd2[0] == 'R2':     self.byte[4].state, self.byte[5].state = 1, 0
-        if cmd2[0] == 'R3':     self.byte[4].state, self.byte[5].state = 1, 1
-        if cmd2[1] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
-        if cmd2[1] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
-        if cmd2[1] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
-        if cmd2[1] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
+        if len(cmd2) == 1:
+            if cmd2[0] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
+            if cmd2[0] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
+            if cmd2[0] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
+            if cmd2[0] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
+        if len(cmd2) == 2:
+            if cmd2[0] == 'R0':     self.byte[4].state, self.byte[5].state = 0, 0
+            if cmd2[0] == 'R1':     self.byte[4].state, self.byte[5].state = 0, 1
+            if cmd2[0] == 'R2':     self.byte[4].state, self.byte[5].state = 1, 0
+            if cmd2[0] == 'R3':     self.byte[4].state, self.byte[5].state = 1, 1
+            if cmd2[1] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
+            if cmd2[1] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
+            if cmd2[1] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
+            if cmd2[1] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
         
 
 class BootProcess:
@@ -103,9 +109,14 @@ class BootProcess:
 
     def update(self, computer, cmd1, *cmd2):
         
-        if isinstance(cmd1, str):
-            self.interpreter.update(cmd1, cmd2[0], cmd2[1])
-        if isinstance(cmd1, (np.ndarray, np.generic)):
+        if isinstance(cmd1, str):  # For commands
+            if len(cmd2) == 2:
+                self.interpreter.update(cmd1, cmd2[0], cmd2[1])
+            if len(cmd2) == 1:
+                self.interpreter.update(cmd1, cmd2[0])
+            if len(cmd2) == 0:
+                self.interpreter.update(cmd1)
+        if isinstance(cmd1, (np.ndarray, np.generic)):  # For data
             self.interpreter.initial_set(cmd1)
 
         computer.RAM.initial_RAM_set(self.Address, self.interpreter)
@@ -130,16 +141,18 @@ def run_computer(run_time):
     multi_purpose_byte = Byte()
 
     # Boot to RAM
-    booter.update(my_computer, 'DATA', 'Rx', 'R0')  # Load Data to R0 as Operand 1
+    booter.update(my_computer, 'DATA', 'R0')  # Load Data to R0 as Operand 1
     booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to R0
-    booter.update(my_computer, 'DATA', 'Rx', 'R1')  # Load Data to R1 as Operand 2
+    booter.update(my_computer, 'DATA', 'R1')  # Load Data to R1 as Operand 2
     booter.update(my_computer, np.array([1, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
     booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
-    booter.update(my_computer, 'DATA', 'Rx', 'R2')  # Load Data to R2 as RAM Address
+    booter.update(my_computer, 'CLF')  # Clear Flags
+    booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as RAM Address
     booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
     booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
-    booter.update(my_computer, 'JUMP', 'Rx', 'Rx')  # JUMP to Address stored in next byte
+    booter.update(my_computer, 'JUMP')  # JUMP to Address stored in next byte
     booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Address to which we JUMP
+
     # booter.update(my_computer, 'DATA', 'Rx', 'R3')  # Load Data to R3 as RAM Address
     # booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Data to R3 which is RAM Address for JUMP
 
@@ -148,10 +161,16 @@ def run_computer(run_time):
     multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     for t in range(run_time):
-        if t % 49 == 0:
-            print('t='.format(t))
+        if (t - 1) % 48 == 0:
+            print('t = {}'.format(t))
             print('Stepper = ', end='')
             my_computer.Control.Stepper.report()
+            print('Instruction Register = ', end='')
+            my_computer.IR.report()
+            print('Instruction Address Register = ', end='')
+            my_computer.IAR.Memory.report()
+            print('Carry Flag = ', end='')
+            my_computer.Flags.Carry.report()
             # print('IAR = ', end='')
             # my_computer.IAR.Memory.report()
             # print('IR = ', end='')
