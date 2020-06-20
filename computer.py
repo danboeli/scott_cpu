@@ -64,16 +64,17 @@ class Computer(Byte):
 class Interpreter(Byte):
     def update(self, cmd1, *cmd2):
         if cmd1 == 'ADD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))
-        if cmd1 == 'SHL': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1])) # Todo: Swap SHL / SHR??
-        if cmd1 == 'SHR': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1])) # Todo: Swap SHL / SHR??
+        if cmd1 == 'SHL': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # Todo: Swap SHL / SHR??
+        if cmd1 == 'SHR': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # Todo: Swap SHL / SHR??
         if cmd1 == 'NOT': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))
         if cmd1 == 'AND': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
         if cmd1 == 'OR': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))
         if cmd1 == 'XOR': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))
         if cmd1 == 'CMP': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))
-        if cmd1 == 'LOAD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
-        if cmd1 == 'STORE': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))
-        if cmd1 == 'DATA': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))
+        if cmd1 == 'LOAD': self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # Load RB from RAM Address RA
+        if cmd1 == 'STORE': self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # Store RB at RAM Address RA
+        if cmd1 == 'DATA': self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Next Byte in RAM is data, store this in RB
+        if cmd1 == 'JUMP': self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # Next go to the RAM Address stored in RB
         if cmd2[0] == 'R0':    self.byte[4].state, self.byte[5].state = 0, 0
         if cmd2[0] == 'R1':    self.byte[4].state, self.byte[5].state = 0, 1
         if cmd2[0] == 'R2':    self.byte[4].state, self.byte[5].state = 1, 0
@@ -129,32 +130,32 @@ def run_computer(run_time):
     booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
     booter.update(my_computer, 'DATA', 'Rx', 'R2')  # Load Data to R2 as RAM Address
     booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
-    booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2
+    booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
+    booter.update(my_computer, 'DATA', 'Rx', 'R3')  # Load Data to R3 as RAM Address
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Data to R3 which is RAM Address for JUMP
+    booter.update(my_computer, 'JUMP', 'Rx', 'R3')
 
     multitasker.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
-    # Boot to Register - THIS will be replaced by the DATA Instruction - boot goes to RAM an Registers are initialized
-    # from RAM via DATA instruction
-    # my_computer.R[0].Memory.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))
-
     for t in range(run_time):
-        print('--t= {}'.format(t))
-        print('Stepper = ', end='')
-        my_computer.Control.Stepper.report()
-        # print('IAR = ', end='')
-        # my_computer.IAR.Memory.report()
-        # print('IR = ', end='')
-        # my_computer.IR.report()
-        print('R0 = ', end='')
-        my_computer.R[0].Memory.report()
-        print('R1 = ', end='')
-        my_computer.R[1].Memory.report()
-        print('R2 = ', end='')
-        my_computer.R[2].Memory.report()
-        print('R3 = ', end='')
-        my_computer.R[3].Memory.report()
-        print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
-        my_computer.RAM.report_Address(multitasker)
+        if t % 49 == 0:
+            print('t='.format(t))
+            print('Stepper = ', end='')
+            my_computer.Control.Stepper.report()
+            # print('IAR = ', end='')
+            # my_computer.IAR.Memory.report()
+            # print('IR = ', end='')
+            # my_computer.IR.report()
+            print('R0 = ', end='')
+            my_computer.R[0].Memory.report()
+            print('R1 = ', end='')
+            my_computer.R[1].Memory.report()
+            print('R2 = ', end='')
+            my_computer.R[2].Memory.report()
+            print('R3 = ', end='')
+            my_computer.R[3].Memory.report()
+            print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
+            my_computer.RAM.report_Address(multitasker)
 
         my_computer.update()
 
@@ -171,7 +172,7 @@ def run_computer(run_time):
     # plt.show()
 
 
-runtime = 250
+runtime = 500
 pr = cProfile.Profile()
 pr.enable()
 run_computer(runtime)

@@ -146,9 +146,10 @@ class ControlUnit(Byte):
         self.LOAD_or_STORE = ORBit()
         self.Enable_RegA_ALU = ANDBit()
         self.Enable_RegA_LOAD_STORE = ANDBit()
-        self.Enable_RegB = ORBit()
+        self.Enable_RegB = OR3Bit()
         self.Enable_RegB_ALU = ANDBit()
         self.Enable_RegB_STORE = ANDBit()
+        self.Enable_RegB_JUMP = ANDBit()
         self.Set_RegB = OR3Bit()
         self.Set_RegB_ALU = AND3Bit()
         self.Set_RegB_LOAD = ANDBit()
@@ -169,8 +170,9 @@ class ControlUnit(Byte):
         self.Set_RAM = ANDBit()
         self.Set_TMP = ANDBit()
         self.Set_IR = ANDBit()
-        self.Set_IAR = ORBit()
+        self.Set_IAR = OR3Bit()
         self.Set_IAR_DATA = ANDBit()
+        self.Set_IAR_JUMP = ANDBit()
         self.Set_IAR_IAR_ADV = ANDBit()
         self.ALU_OP = [AND3Bit() for i in range(3)]
         self.CarryIn = Bit()
@@ -190,11 +192,11 @@ class ControlUnit(Byte):
         self.AND_STEP4_DATA = ANDBit()
         self.AND_STEP5_DATA = ANDBit()
         self.AND_STEP6_DATA = ANDBit()
+        self.AND_STEP4_JUMP = ANDBit()
 
     def update(self, IR):
         self.clock.update()
         self.Stepper.update(self.clock, self.Stepper.byte[7])
-
 
         # Non-ALU Instruction Decoding
         self.InstructionDecoder.update(IR.byte[1], IR.byte[2], IR.byte[3])
@@ -223,6 +225,10 @@ class ControlUnit(Byte):
         # DATA Step 4: Set Bit1, Enable IAR to MAR and ACC(=IAR+Bit1)
         # DATA Step 5: Enable RAM to RegB
         # DATA Step 6: Enable ACC to IAR
+        # JUMP Step 4: Enable RegB to IAR
+
+        #  Jump Instruction
+        self.AND_STEP4_JUMP.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JUMP
 
         #  DATA INSTRUCTION
         self.AND_STEP4_DATA.update(self.Stepper.byte[4], self.NonALUCodes[2])  # Step 4 DATA
@@ -237,7 +243,8 @@ class ControlUnit(Byte):
 
         self.Set_IAR_IAR_ADV.update(self.clock.clock_set, self.Stepper.byte[3])  # Step3 IAR ADVANCE
         self.Set_IAR_DATA.update(self.clock.clock_set, self.AND_STEP6_DATA)  # Step 6 DATA
-        self.Set_IAR.update(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA)
+        self.Set_IAR_JUMP.update(self.clock.clock_set, self.AND_STEP4_JUMP)  # Step 4 JUMP
+        self.Set_IAR.update(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA, self.Set_IAR_JUMP)
 
         self.Set_IR.update(self.clock.clock_set, self.Stepper.byte[2])  # Step2
 
@@ -246,7 +253,8 @@ class ControlUnit(Byte):
 
         self.Enable_RegB_ALU.update(self.Stepper.byte[4], IR.byte[0])  # Step4  ALU
         self.Enable_RegB_STORE.update(self.Stepper.byte[5], self.NonALUCodes[1])  # Step 5   STORE
-        self.Enable_RegB.update(self.Enable_RegB_STORE, self.Enable_RegB_ALU)  # OR over Steps
+        self.Enable_RegB_JUMP.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JUMP
+        self.Enable_RegB.update(self.Enable_RegB_STORE, self.Enable_RegB_ALU, self.Enable_RegB_JUMP)  # OR over Steps
         self.LOAD_or_STORE.update(self.NonALUCodes[0], self.NonALUCodes[1])
         self.Enable_RegA_ALU.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
         self.Enable_RegA_LOAD_STORE.update(self.Stepper.byte[4], self.LOAD_or_STORE)  # Step 4  LOAD AND STORE
