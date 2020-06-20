@@ -48,6 +48,26 @@ class RAM256byte(Byte):
                 self.RAM[x].Reg.Memory.report()
 
 
+class FlagRegister(Nibble):
+    def __init__(self):
+        super().__init__()
+        self.Carry = MemoryBit()
+        self.Larger = MemoryBit()
+        self.Equal = MemoryBit()
+        self.Zero = MemoryBit()
+
+    def update(self, set_bit, c, al, e, z):
+        self.Carry.update(set_bit, c)
+        self.Larger.update(set_bit, al)
+        self.Equal.update(set_bit, e)
+        self.Zero.update(set_bit, z)
+
+        self.byte[0].update(self.Carry)
+        self.byte[1].update(self.Larger)
+        self.byte[2].update(self.Equal)
+        self.byte[3].update(self.Zero)
+
+
 class ArithmeticAndLogicUnit(Byte):
 
     def __init__(self):
@@ -178,6 +198,7 @@ class ControlUnit(Byte):
         self.Set_IAR_IAR_ADV = ANDBit()
         self.ALU_OP = [AND3Bit() for i in range(3)]
         self.CarryIn = Bit()
+        self.Set_Flags = ANDBit()
         self.Decoder_RA = Decoder2x4()
         self.Decoder_RB = Decoder2x4()
         self.InstructionDecoder = Decoder3x8()
@@ -222,7 +243,7 @@ class ControlUnit(Byte):
         # Step2: Enable RAM to IR
         # Step3: Enable ACC to IAR
         # ALU Step 4: Set RegB to TMP
-        # ALU Step 5: ALU gets Orders, Reg A (+ TMP) are set to ACC
+        # ALU Step 5: ALU gets Orders, Reg A (+ TMP) are set to ACC, Flags are set
         # ALU Step 6: Acc is set to Reg B
         # LOAD Step 4: Set RegA to MAR
         # LOAD Step 5: Set RAM to RegB
@@ -271,6 +292,7 @@ class ControlUnit(Byte):
         self.Enable_RegB.update(self.Enable_RegB_STORE, self.Enable_RegB_ALU, self.Enable_RegB_JMPR)  # OR over Steps
         self.LOAD_or_STORE.update(self.NonALUCodes[0], self.NonALUCodes[1])
         self.Enable_RegA_ALU.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
+        self.Set_Flags.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
         self.Enable_RegA_LOAD_STORE.update(self.Stepper.byte[4], self.LOAD_or_STORE)  # Step 4  LOAD AND STORE
         self.Enable_RegA.update(self.Enable_RegA_ALU, self.Enable_RegA_LOAD_STORE)  # OR over Steps
         self.Set_RegB_ALU.update(self.Stepper.byte[6], IR.byte[0], self.ALU_Instr_S6_NOT)  # Step6  ALU

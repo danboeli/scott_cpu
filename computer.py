@@ -20,6 +20,7 @@ class Computer(Byte):
         self.IAR = Register()
         self.IR = MemoryByte()
         self.Control = ControlUnit()
+        self.Flags = FlagRegister()
 
     def update(self):
         self.Control.update(self.IR)
@@ -54,7 +55,10 @@ class Computer(Byte):
             self.TMP.update(self.Control.Set_TMP, self.BUS)
             self.BUS1.update(self.TMP, self.Control.Bus1bit)
             # ALU I/ connected to BUS1, /O connected to ACC
-            self.ALU.update(self.BUS, self.BUS1, self.Control.CarryIn, self.Control.ALU_OP)
+            self.ALU.update(self.BUS, self.BUS1, self.Flags.Carry, self.Control.ALU_OP)
+
+            # FLAG I/ connected to ALU flags, /O connected to CU
+            self.Flags.update(self.Control.Set_Flags, self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
 
             # ACC I/ connected to ALU, /O connected to BUS
             self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
@@ -129,7 +133,7 @@ def run_computer(run_time):
     booter.update(my_computer, 'DATA', 'Rx', 'R0')  # Load Data to R0 as Operand 1
     booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to R0
     booter.update(my_computer, 'DATA', 'Rx', 'R1')  # Load Data to R1 as Operand 2
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
+    booter.update(my_computer, np.array([1, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
     booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
     booter.update(my_computer, 'DATA', 'Rx', 'R2')  # Load Data to R2 as RAM Address
     booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
@@ -138,7 +142,9 @@ def run_computer(run_time):
     booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Address to which we JUMP
     # booter.update(my_computer, 'DATA', 'Rx', 'R3')  # Load Data to R3 as RAM Address
     # booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Data to R3 which is RAM Address for JUMP
-    
+
+    # Note - as reset Flags command is not yet implemented result is one bigger than expected
+
     multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     for t in range(run_time):
