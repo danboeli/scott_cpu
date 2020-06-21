@@ -173,7 +173,7 @@ def run_computer(run_time):
             print('Instruction Address Register = ', end='')
             my_computer.IAR.Memory.report()
             print('Carry Flag = ', end='')
-            my_computer.CarryOut.report()
+            my_computer.CarryOut.Memory.report()
             # print('IAR = ', end='')
             # my_computer.IAR.Memory.report()
             # print('IR = ', end='')
