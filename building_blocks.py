@@ -51,14 +51,13 @@ class RAM256byte(Byte):
 class FlagRegister(Nibble):
     def __init__(self):
         super().__init__()
-        self.Carry = RegisterBit()  # Attention: Book has Memory Bit here
-                                    # - however this leads to feedback loop as Carry feeds back to ACC
+        self.Carry = MemoryBit()
         self.Larger = MemoryBit()
         self.Equal = MemoryBit()
         self.Zero = MemoryBit()
 
-    def update(self, set_bit, enable_bit, c, al, e, z):
-        self.Carry.update(set_bit, enable_bit, c)
+    def update(self, set_bit, c, al, e, z):
+        self.Carry.update(set_bit, c)
         self.Larger.update(set_bit, al)
         self.Equal.update(set_bit, e)
         self.Zero.update(set_bit, z)
@@ -198,9 +197,12 @@ class ControlUnit(Byte):
         self.Set_IAR_JUMP = ANDBit()
         self.Set_IAR_IAR_ADV = ANDBit()
         self.ALU_OP = [AND3Bit() for i in range(3)]
-        self.CarryIn = Bit()
+        self.Set_CarryFlag = ORBit()
+        self.Set_CarryFlag_PostALU = AND3Bit()
+        self.Set_CarryFlag_CLF = AND3Bit()
+        self.Enable_CarryFlag = ANDBit()
         self.Set_Flags = ORBit()
-        self.Enable_Flags = ANDBit()
+
         self.Decoder_RA = Decoder2x4()
         self.Decoder_RB = Decoder2x4()
         self.InstructionDecoder = Decoder3x8()
@@ -224,10 +226,9 @@ class ControlUnit(Byte):
         self.AND_STEP5_JUMP = ANDBit()
         self.AND_STEP5_ALU = ANDBit()
         self.AND_STEP4_CLF = ANDBit()
-        self.NOT_Step5_AND_ALU = NOTBit()
+        self.NOT_Step_1 = NOTBit()
         self.Set_Flags_ALU = AND3Bit()
         self.Set_Flags_CLF = AND3Bit()
-        self.AND_STEP5_ALU_OR_Step1 = ORBit()
 
     def update(self, IR, Flags):
         self.clock.update()
@@ -309,12 +310,15 @@ class ControlUnit(Byte):
         self.Enable_RegA_ALU.update(IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
         self.Set_Flags_ALU.update(self.clock.clock_set, IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
         self.Set_Flags_CLF.update(self.clock.clock_set, self.NonALUCodes[6], self.Stepper.byte[4])  # Step4  CLF
-        # if self.Set_Flags_CLF.state == 1: print('Reset Triggered')
         self.Set_Flags.update(self.Set_Flags_ALU, self.Set_Flags_CLF)  # OR over Steps
+        # todo disable CarryIn for step 1
+        self.Set_CarryFlag_PostALU.update(self.clock.clock_set, IR.byte[0], self.Stepper.byte[6])  # Step6 Delayed CarryIn Flag
+        self.Set_CarryFlag_CLF.update(self.clock.clock_set, self.NonALUCodes[6], self.Stepper.byte[4])  # Delayed CarryIn Flag Reset
+        self.Set_CarryFlag.update(self.Set_CarryFlag_PostALU, self.Set_CarryFlag_CLF)
+        self.NOT_Step_1.update(self.Stepper.byte[1])
+        self.Enable_CarryFlag.update(self.clock.clock_enable, self.NOT_Step_1) # CarryIn to ALU is enabled only outside step 1
         self.AND_STEP5_ALU.update(IR.byte[0], self.Stepper.byte[5])  # Avoid feedback loop: Step 5 and ALU Instruction: Disable carry flag
-        self.AND_STEP5_ALU_OR_Step1.update(self.AND_STEP5_ALU, self.Stepper.byte[1])
-        self.NOT_Step5_AND_ALU.update(self.AND_STEP5_ALU_OR_Step1)  # Avoid feedback loop: Step 5 and ALU Instruction: Disable carry flag
-        self.Enable_Flags.update(self.clock.clock_enable, self.NOT_Step5_AND_ALU)  # Avoid feedback loop: Step 5 and ALU Instruction: Disable carry flag
+        # todo
         self.Enable_RegA_LOAD_STORE.update(self.Stepper.byte[4], self.LOAD_or_STORE)  # Step 4  LOAD AND STORE
         self.Enable_RegA.update(self.Enable_RegA_ALU, self.Enable_RegA_LOAD_STORE)  # OR over Steps
         self.Set_RegB_ALU.update(self.Stepper.byte[6], IR.byte[0], self.ALU_Instr_S6_NOT)  # Step6  ALU

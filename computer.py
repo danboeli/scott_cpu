@@ -21,6 +21,7 @@ class Computer(Byte):
         self.IR = MemoryByte()
         self.Control = ControlUnit()
         self.Flags = FlagRegister()
+        self.CarryOut = RegisterBit()
 
     def update(self):
         self.Control.update(self.IR, self.Flags)
@@ -55,9 +56,11 @@ class Computer(Byte):
             self.TMP.update(self.Control.Set_TMP, self.BUS)
             self.BUS1.update(self.TMP, self.Control.Bus1bit)
             # ALU I/ connected to BUS1, /O connected to ACC
-            self.ALU.update(self.BUS, self.BUS1, self.Flags.Carry, self.Control.ALU_OP)
+            self.ALU.update(self.BUS, self.BUS1, self.CarryOut, self.Control.ALU_OP)
             # FLAG I/ connected to ALU flags, /O connected to CU
-            self.Flags.update(self.Control.Set_Flags, self.Control.Enable_Flags, self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
+            self.Flags.update(self.Control.Set_Flags,
+                              self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
+            self.CarryOut.update(self.Control.Set_CarryFlag, self.Control.Enable_CarryFlag, self.Flags.Carry)
             # ACC I/ connected to ALU, /O connected to BUS
             self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
             self.BUS.update(self.ACC)
@@ -170,7 +173,7 @@ def run_computer(run_time):
             print('Instruction Address Register = ', end='')
             my_computer.IAR.Memory.report()
             print('Carry Flag = ', end='')
-            my_computer.Flags.Carry.report()
+            my_computer.CarryOut.report()
             # print('IAR = ', end='')
             # my_computer.IAR.Memory.report()
             # print('IR = ', end='')
@@ -201,7 +204,7 @@ def run_computer(run_time):
     # plt.show()
 
 
-runtime = 500
+runtime = 550
 pr = cProfile.Profile()
 pr.enable()
 run_computer(runtime)
