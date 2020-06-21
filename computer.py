@@ -85,6 +85,11 @@ class Interpreter(Byte):
         if cmd1 == 'JMPIF':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 0]))  # CMD 5 Jump if to next RAM Address
         if cmd1 == 'JMPR':      self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
 
+        if len(cmd2) == 4:
+            self.byte[4].state = cmd2[0]
+            self.byte[5].state = cmd2[1]
+            self.byte[6].state = cmd2[2]
+            self.byte[7].state = cmd2[3]
         if len(cmd2) == 1:
             if cmd2[0] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
             if cmd2[0] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
@@ -113,6 +118,8 @@ class BootProcess:
     def update(self, computer, cmd1, *cmd2):
         
         if isinstance(cmd1, str):  # For commands
+            if len(cmd2) == 4:
+                self.interpreter.update(cmd1, cmd2[0], cmd2[1], cmd2[2], cmd2[3])
             if len(cmd2) == 2:
                 self.interpreter.update(cmd1, cmd2[0], cmd2[1])
             if len(cmd2) == 1:
@@ -150,34 +157,29 @@ def run_computer(run_time):
     booter.update(my_computer, np.array([1, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
     booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
     booter.update(my_computer, 'CLF')  # Clear Flags
+    booter.update(my_computer, 'CMP', 'R1', 'R0')  # Compare R1 and R0
+    booter.update(my_computer, 'CLF')  # Clear Flags
     booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as RAM Address
     booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
     booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
     booter.update(my_computer, 'JUMP')  # JUMP to Address stored in next byte
     booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Address to which we JUMP
 
-    # booter.update(my_computer, 'DATA', 'Rx', 'R3')  # Load Data to R3 as RAM Address
-    # booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Data to R3 which is RAM Address for JUMP
-
-    # Note - as reset Flags command is not yet implemented result is one bigger than expected
-
     multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     for t in range(run_time):
-        if (t - 1) % 48 == 0:
+        if ((t - 1) % 48 == 0) & (t > 1):
             print('t = {}'.format(t))
             print('Stepper = ', end='')
-            my_computer.Control.Stepper.report()
+            my_computer.Control.Stepper.report_byte()
             print('Instruction Register = ', end='')
-            my_computer.IR.report()
+            my_computer.IR.report_byte()
             print('Instruction Address Register = ', end='')
             my_computer.IAR.Memory.report()
+            print('Larger Flag = ', end='')
+            my_computer.Flags.Larger.report()
             print('Carry Flag = ', end='')
             my_computer.CarryOut.Memory.report()
-            # print('IAR = ', end='')
-            # my_computer.IAR.Memory.report()
-            # print('IR = ', end='')
-            # my_computer.IR.report()
             print('R0 = ', end='')
             my_computer.R[0].Memory.report()
             print('R1 = ', end='')

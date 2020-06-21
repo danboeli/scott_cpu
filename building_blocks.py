@@ -355,7 +355,6 @@ class ControlUnit(Byte):
         self.ALU_OP[1].update(IR.byte[0], self.Stepper.byte[5], IR.byte[2])  # Step5    ALU
         self.ALU_OP[2].update(IR.byte[0], self.Stepper.byte[5], IR.byte[3])  # Step5    ALU
 
-        # Dynamic Register
         self.Decoder_RA.update(IR.byte[4], IR.byte[5])
         self.Decoder_RB.update(IR.byte[6], IR.byte[7])
         self.Set_R[0].update(self.clock.clock_set, self.Decoder_RB.byte[0], self.Set_RegB)
