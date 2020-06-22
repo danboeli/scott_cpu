@@ -157,7 +157,7 @@ class ControlUnit(Byte):
         super(ControlUnit, self).__init__()
         self.clock = Clock()
         self.Stepper = Stepper()
-        self.Bus1bit = OR3Bit()
+        self.Bus1bit = OR4Bit()
         self.Enable_RAM = OR4Bit()
         self.Enable_IAR = OR3Bit()
         self.Enable_IAR_DATA = ANDBit()
@@ -228,6 +228,21 @@ class ControlUnit(Byte):
         self.AND_STEP4_CLF = ANDBit()
         self.Set_Flags_ALU = AND3Bit()
         self.Set_Flags_CLF = AND3Bit()
+        self.Flag_C = ANDBit()
+        self.Flag_A = ANDBit()
+        self.Flag_E = ANDBit()
+        self.Flag_Z = ANDBit()
+        self.JUMPIF_OR = OR4Bit()
+        self.AND_STEP4_JMPIF = ANDBit()
+        self.AND_STEP5_JMPIF = ANDBit()
+        self.AND_STEP6_JMPIF = AND3Bit()
+        self.Enable_IAR_JMPIF = ANDBit()  # Step 4 JMPIF
+        self.Set_MAR_JMPIF = ANDBit()  # Step 4 JMPIF
+        self.Set_ACC_JMPIF = ANDBit()  # Step 4 JMPIF
+        self.Enable_ACC_JMPIF = ANDBit()  # Step 5 JMPIF
+        self.Set_IAR_JMPIF = ANDBit()  # Step 5 JMPIF
+        self.Enable_RAM_JMPIF = ANDBit()  # Step 6 JMPIF
+        self.Set_IAR_JMPIF = ANDBit()  # Step 6 JMPIF
 
     def update(self, IR, Flags):
         self.clock.update()
@@ -267,6 +282,19 @@ class ControlUnit(Byte):
         # JUMP Step 4: Enable IAR to MAR
         # JUMP Step 5: Enable RAM to IAR
         # CLF Step 4: Enable bus 1 set Flags
+        # JMPIF: As for all instructions, IAR already points to address in RAM following JMPIF (Step1-3).
+        # Address in RAM following JMPIF is the jump address, no instruction. Hence IAR needs to be incremented again
+        # and then points to next instruction in RAM.
+        # If jump is not executed, nothing further needs to be done. If jump is executed, IAR is overwritten by address
+        # in RAM pointing to the jump target address.
+        # JMPIF Step 4: Enable Bus 1 and IAR to ACC(=IAR already incremented +1 ) and MAR(=IAR already incremented)
+        # JMPIF Step 5: Enable ACC to IAR
+        # JMPIF Step 6: Enable RAM to IAR (if jump is executed)
+
+        #  DATA INSTRUCTION
+        self.AND_STEP4_DATA.update(self.Stepper.byte[4], self.NonALUCodes[2])  # Step 4 DATA
+        self.AND_STEP5_DATA.update(self.Stepper.byte[5], self.NonALUCodes[2])  # Step 5 DATA
+        self.AND_STEP6_DATA.update(self.Stepper.byte[6], self.NonALUCodes[2])  # Step 6 DATA
 
         #  JMPR Instruction
         self.AND_STEP4_JMPR.update(self.Stepper.byte[4], self.NonALUCodes[3])  # Step 4 JMPR
@@ -275,15 +303,31 @@ class ControlUnit(Byte):
         self.AND_STEP4_JUMP.update(self.Stepper.byte[4], self.NonALUCodes[4])  # Step 4 JUMP
         self.AND_STEP5_JUMP.update(self.Stepper.byte[5], self.NonALUCodes[4])  # Step 5 JUMP
 
-        #  DATA INSTRUCTION
-        self.AND_STEP4_DATA.update(self.Stepper.byte[4], self.NonALUCodes[2])  # Step 4 DATA
-        self.AND_STEP5_DATA.update(self.Stepper.byte[5], self.NonALUCodes[2])  # Step 5 DATA
-        self.AND_STEP6_DATA.update(self.Stepper.byte[6], self.NonALUCodes[2])  # Step 6 DATA
+        #  JMPIF Instruction
+        self.Flag_C.update(Flags.Carry)
+        self.Flag_A.update(Flags.Larger)
+        self.Flag_E.update(Flags.Equal)
+        self.Flag_Z.update(Flags.Zero)
+        self.JUMPIF_OR.update(self.Flag_C, self.Flag_A, self.Flag_E, self.Flag_Z)
+        self.AND_STEP4_JMPIF.update(self.Stepper.byte[4], self.NonALUCodes[5])  # Step 4 JMPIF
+        self.AND_STEP5_JMPIF.update(self.Stepper.byte[5], self.NonALUCodes[5])  # Step 5 JMPIF
+        self.AND_STEP6_JMPIF.update(self.Stepper.byte[6], self.NonALUCodes[5], self.JUMPIF_OR)  # Step 6 JMPIF
+
+        # todo include final ORs for below enables and sets
+        self.Enable_IAR_JMPIF.update(self.clock.clock_enable, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
+        self.Set_MAR_JMPIF.update(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
+        self.Set_ACC_JMPIF.update(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
+        self.Enable_ACC_JMPIF.update(self.clock.clock_enable, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
+        self.Set_IAR_JMPIF.update(self.clock.clock_set, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
+        self.Enable_RAM_JMPIF.update(self.clock.clock_enable, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
+        self.Set_IAR_JMPIF.update(self.clock.clock_set, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
+        # todo end
 
         #  CLF Instruction
         self.AND_STEP4_CLF.update(self.Stepper.byte[4], self.NonALUCodes[6])
 
-        self.Bus1bit.update(self.Stepper.byte[1], self.AND_STEP4_DATA, self.AND_STEP4_CLF)  # Step1 IAR ADVANCE _OR_ Step 4 DATA _OR_ Step 4 CLF
+        self.Bus1bit.update(self.Stepper.byte[1], self.AND_STEP4_DATA, self.AND_STEP4_CLF, self.AND_STEP4_JMPIF)
+        # Step1 IAR ADVANCE _OR_ Step 4 DATA _OR_ Step 4 CLF _OR_ Step 4 JMPIF
 
         self.Enable_IAR_DATA.update(self.clock.clock_enable, self.AND_STEP4_DATA)  # Step 4 DATA
         self.Enable_IAR_JUMP.update(self.clock.clock_enable, self.AND_STEP4_JUMP)  # Step 4 JUMP
