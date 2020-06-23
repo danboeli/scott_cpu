@@ -54,6 +54,16 @@ class OR4Bit(Bit):
         self.state = s_or4(a_bit.state, b_bit.state, c_bit.state, d_bit.state)
 
 
+class OR5Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit, d_bit, e_bit):
+        self.state = s_or4(a_bit.state, b_bit.state, c_bit.state, s_or(d_bit.state, e_bit.state))
+
+
+class OR6Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit, d_bit, e_bit, f_bit):
+        self.state = s_or3(s_or(a_bit.state, b_bit.state), s_or(c_bit.state, d_bit.state), s_or(e_bit.state, f_bit.state))
+
+
 class AddBit(Bit):
 
     def __init__(self):

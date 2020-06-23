@@ -155,16 +155,17 @@ def run_computer(run_time):
     booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to R0
     booter.update(my_computer, 'DATA', 'R1')  # Load Data to R1 as Operand 2
     booter.update(my_computer, np.array([1, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
+    booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as RAM Address
+    booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
     booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
     booter.update(my_computer, 'CLF')  # Clear Flags
     booter.update(my_computer, 'CMP', 'R1', 'R0')  # Compare R1 >= R0
-    booter.update(my_computer, 'CLF')  # Clear Flags
-    booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as RAM Address
-    booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
     booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
-    booter.update(my_computer, 'JUMP')  # JUMP to Address stored in next byte
-    # booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # JUMP to Address stored in next byte
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # Address to which we JUMP
+    # booter.update(my_computer, 'JUMP')  # JUMP to Address stored in next byte
+    booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # JUMP to Address stored in next byte
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # Address to which we JUMP
+    booter.update(my_computer, 'DATA', 'R3')  # Load Data to R3 as RAM Address
+    booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # Goodbye Message
 
     multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
@@ -207,7 +208,7 @@ def run_computer(run_time):
     # plt.show()
 
 
-runtime = 550
+runtime = 800
 pr = cProfile.Profile()
 pr.enable()
 run_computer(runtime)

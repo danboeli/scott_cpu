@@ -158,8 +158,8 @@ class ControlUnit(Byte):
         self.clock = Clock()
         self.Stepper = Stepper()
         self.Bus1bit = OR4Bit()
-        self.Enable_RAM = OR4Bit()
-        self.Enable_IAR = OR3Bit()
+        self.Enable_RAM = OR5Bit()
+        self.Enable_IAR = OR4Bit()
         self.Enable_IAR_DATA = ANDBit()
         self.Enable_IAR_IAR_ADV = ANDBit()
         self.Enable_IAR_JUMP = ANDBit()
@@ -179,19 +179,19 @@ class ControlUnit(Byte):
         self.Enable_RA = [AND3Bit() for i in range(4)]
         self.Enable_RB = [AND3Bit() for i in range(4)]
         self.Set_R = [AND3Bit() for i in range(4)]
-        self.Set_MAR = OR4Bit()
-        self.Set_ACC = OR3Bit()
+        self.Set_MAR = OR5Bit()
+        self.Set_ACC = OR4Bit()
         self.Set_ACC_Advance_IAR = ANDBit()
         self.Set_ACC_DATA = ANDBit()
         self.Set_ACC_ALU_Operation = AND3Bit()
-        self.Enable_ACC = OR3Bit()
+        self.Enable_ACC = OR4Bit()
         self.Enable_ACC_Advance_IAR = ANDBit()
         self.Enable_ACC_ALU_Operation = ANDBit()
         self.Enable_ACC_DATA = ANDBit()
         self.Set_RAM = ANDBit()
         self.Set_TMP = ANDBit()
         self.Set_IR = ANDBit()
-        self.Set_IAR = OR4Bit()
+        self.Set_IAR = OR6Bit()
         self.Set_IAR_DATA = ANDBit()
         self.Set_IAR_JMPR = ANDBit()
         self.Set_IAR_JUMP = ANDBit()
@@ -240,9 +240,9 @@ class ControlUnit(Byte):
         self.Set_MAR_JMPIF = ANDBit()  # Step 4 JMPIF
         self.Set_ACC_JMPIF = ANDBit()  # Step 4 JMPIF
         self.Enable_ACC_JMPIF = ANDBit()  # Step 5 JMPIF
-        self.Set_IAR_JMPIF = ANDBit()  # Step 5 JMPIF
+        self.Set_IAR5_JMPIF = ANDBit()  # Step 5 JMPIF
         self.Enable_RAM_JMPIF = ANDBit()  # Step 6 JMPIF
-        self.Set_IAR_JMPIF = ANDBit()  # Step 6 JMPIF
+        self.Set_IAR6_JMPIF = ANDBit()  # Step 6 JMPIF
 
     def update(self, IR, Flags):
         self.clock.update()
@@ -304,24 +304,14 @@ class ControlUnit(Byte):
         self.AND_STEP5_JUMP.update(self.Stepper.byte[5], self.NonALUCodes[4])  # Step 5 JUMP
 
         #  JMPIF Instruction
-        self.Flag_C.update(Flags.Carry)
-        self.Flag_A.update(Flags.Larger)
-        self.Flag_E.update(Flags.Equal)
-        self.Flag_Z.update(Flags.Zero)
+        self.Flag_C.update(Flags.Carry, IR.byte[4])
+        self.Flag_A.update(Flags.Larger, IR.byte[5])
+        self.Flag_E.update(Flags.Equal, IR.byte[6])
+        self.Flag_Z.update(Flags.Zero, IR.byte[7])
         self.JUMPIF_OR.update(self.Flag_C, self.Flag_A, self.Flag_E, self.Flag_Z)
         self.AND_STEP4_JMPIF.update(self.Stepper.byte[4], self.NonALUCodes[5])  # Step 4 JMPIF
         self.AND_STEP5_JMPIF.update(self.Stepper.byte[5], self.NonALUCodes[5])  # Step 5 JMPIF
         self.AND_STEP6_JMPIF.update(self.Stepper.byte[6], self.NonALUCodes[5], self.JUMPIF_OR)  # Step 6 JMPIF
-
-        # todo include final ORs for below enables and sets
-        self.Enable_IAR_JMPIF.update(self.clock.clock_enable, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
-        self.Set_MAR_JMPIF.update(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
-        self.Set_ACC_JMPIF.update(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
-        self.Enable_ACC_JMPIF.update(self.clock.clock_enable, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
-        self.Set_IAR_JMPIF.update(self.clock.clock_set, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
-        self.Enable_RAM_JMPIF.update(self.clock.clock_enable, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
-        self.Set_IAR_JMPIF.update(self.clock.clock_set, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
-        # todo end
 
         #  CLF Instruction
         self.AND_STEP4_CLF.update(self.Stepper.byte[4], self.NonALUCodes[6])
@@ -332,13 +322,17 @@ class ControlUnit(Byte):
         self.Enable_IAR_DATA.update(self.clock.clock_enable, self.AND_STEP4_DATA)  # Step 4 DATA
         self.Enable_IAR_JUMP.update(self.clock.clock_enable, self.AND_STEP4_JUMP)  # Step 4 JUMP
         self.Enable_IAR_IAR_ADV.update(self.clock.clock_enable, self.Stepper.byte[1])  # Step1 IAR ADVANCE
-        self.Enable_IAR.update(self.Enable_IAR_DATA, self.Enable_IAR_IAR_ADV, self.Enable_IAR_JUMP)
+        self.Enable_IAR_JMPIF.update(self.clock.clock_enable, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
+        self.Enable_IAR.update(self.Enable_IAR_DATA, self.Enable_IAR_IAR_ADV, self.Enable_IAR_JUMP, self.Enable_IAR_JMPIF)
 
         self.Set_IAR_IAR_ADV.update(self.clock.clock_set, self.Stepper.byte[3])  # Step3 IAR ADVANCE
         self.Set_IAR_DATA.update(self.clock.clock_set, self.AND_STEP6_DATA)  # Step 6 DATA
         self.Set_IAR_JMPR.update(self.clock.clock_set, self.AND_STEP4_JMPR)  # Step 4 JMPR
         self.Set_IAR_JUMP.update(self.clock.clock_set, self.AND_STEP5_JUMP)  # Step 5 JUMP
-        self.Set_IAR.update(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA, self.Set_IAR_JMPR, self.Set_IAR_JUMP)
+        self.Set_IAR5_JMPIF.update(self.clock.clock_set, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
+        self.Set_IAR6_JMPIF.update(self.clock.clock_set, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
+        self.Set_IAR.update(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA, self.Set_IAR_JMPR,
+                            self.Set_IAR_JUMP, self.Set_IAR5_JMPIF, self.Set_IAR6_JMPIF)
 
         self.Set_IR.update(self.clock.clock_set, self.Stepper.byte[2])  # Step2
 
@@ -371,25 +365,31 @@ class ControlUnit(Byte):
         self.Set_ACC_Advance_IAR.update(self.clock.clock_set, self.Stepper.byte[1])  # Step1
         self.Set_ACC_ALU_Operation.update(self.clock.clock_set, IR.byte[0], self.Stepper.byte[5])  # Step5  ALU
         self.Set_ACC_DATA.update(self.clock.clock_set, self.AND_STEP4_DATA)  # Step 4 DATA
-        self.Set_ACC.update(self.Set_ACC_ALU_Operation, self.Set_ACC_Advance_IAR, self.Set_ACC_DATA)  # OR over Steps
+        self.Set_ACC_JMPIF.update(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
+        self.Set_ACC.update(self.Set_ACC_ALU_Operation, self.Set_ACC_Advance_IAR, self.Set_ACC_DATA, self.Set_ACC_JMPIF)  # OR over Steps
 
         self.Enable_ACC_DATA.update(self.clock.clock_enable, self.AND_STEP6_DATA)  # Step 6 DATA
         self.Enable_ACC_Advance_IAR.update(self.clock.clock_enable, self.Stepper.byte[3])  # Step3
         self.Enable_ACC_ALU_Operation.update(self.Set_RegB_ALU, self.clock.clock_enable)  # Step6   ALU
-        self.Enable_ACC.update(self.Enable_ACC_ALU_Operation,
+        self.Enable_ACC_JMPIF.update(self.clock.clock_enable, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
+        self.Enable_ACC.update(self.Enable_ACC_ALU_Operation, self.Enable_ACC_JMPIF,
                                self.Enable_ACC_Advance_IAR, self.Enable_ACC_DATA)  # OR over Steps
 
         self.Set_MAR_ADVANCE_IAR.update(self.clock.clock_set, self.Stepper.byte[1])  # Step1
         self.Set_MAR_LOAD_and_STORE.update(self.clock.clock_set, self.Enable_RegA_LOAD_STORE)  # Step 4  LOAD and STORE
         self.Set_MAR_DATA.update(self.clock.clock_set, self.AND_STEP4_DATA)  # Step 4 DATA
         self.Set_MAR_JUMP.update(self.clock.clock_set, self.AND_STEP4_JUMP)  # Step 4 JUMP
-        self.Set_MAR.update(self.Set_MAR_ADVANCE_IAR, self.Set_MAR_LOAD_and_STORE, self.Set_MAR_DATA, self.Set_MAR_JUMP)  # OR over Steps
+        self.Set_MAR_JMPIF.update(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
+        self.Set_MAR.update(self.Set_MAR_ADVANCE_IAR, self.Set_MAR_LOAD_and_STORE,
+                            self.Set_MAR_DATA, self.Set_MAR_JUMP, self.Set_MAR_JMPIF)  # OR over Steps
 
         self.Enable_RAM_DATA.update(self.clock.clock_enable, self.AND_STEP5_DATA)  # Step 5 DATA
         self.Enable_RAM_ADVANCE_IAR.update(self.clock.clock_enable, self.Stepper.byte[2])  # Step2
         self.Enable_RAM_LOAD.update(self.clock.clock_enable, self.Set_RegB_LOAD)  # Step 5    LOAD
         self.Enable_RAM_JUMP.update(self.clock.clock_enable, self.AND_STEP5_JUMP)  # Step 5    JUMP
-        self.Enable_RAM.update(self.Enable_RAM_ADVANCE_IAR, self.Enable_RAM_LOAD, self.Enable_RAM_DATA, self.Enable_RAM_JUMP)  # OR over Steps
+        self.Enable_RAM_JMPIF.update(self.clock.clock_enable, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
+        self.Enable_RAM.update(self.Enable_RAM_ADVANCE_IAR, self.Enable_RAM_LOAD, self.Enable_RAM_DATA,
+                               self.Enable_RAM_JUMP, self.Enable_RAM_JMPIF)  # OR over Steps
 
         self.Set_RAM.update(self.Enable_RegB_STORE, self.clock.clock_set)  # Step 5    STORE
 
