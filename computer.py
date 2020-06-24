@@ -157,6 +157,7 @@ def run_computer(run_time):
     my_computer = Computer()
     booter = BootProcess()
     multi_purpose_byte = Byte()
+    multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     # Boot to RAM
     booter.update(my_computer, 'DATA', 'R0')  # Load Data to R0 as Operand 1
@@ -175,7 +176,7 @@ def run_computer(run_time):
     booter.update(my_computer, 'DATA', 'R3')  # Load Data to R3 as RAM Address
     booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # Goodbye Message
 
-    multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
+
 
     for t in range(run_time):
         if ((t - 1) % 48 == 0) & (t > 1):
