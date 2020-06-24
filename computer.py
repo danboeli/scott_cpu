@@ -22,6 +22,7 @@ class Computer(Byte):
         self.Control = ControlUnit()
         self.Flags = FlagRegister()
         self.CarryOut = RegisterBit()
+        self.IOBus = IOBus()
 
     def update(self):
         self.Control.update(self.IR, self.Flags)
@@ -65,6 +66,9 @@ class Computer(Byte):
             self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
             self.BUS.update(self.ACC)
 
+            self.IOBus.update(self.Control.IOClock_Set, self.Control.IOClock_Enable,
+                              self.Control.IO_OUTPUT, self.Control.IO_DATA_ADDRESS, self.BUS)
+            # I/O Bus are the loose ends currently dangling out of the computer
 
 class Interpreter(Byte):
     def update(self, cmd1, *cmd2):
