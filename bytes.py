@@ -95,15 +95,20 @@ class CompareByte(Byte):
 
     def __init__(self):
         self.byte = [CompareBit() for i in range(self.size)]
-        self.equal = Bit(1)
-        self.larger = Bit(0)
+        self.initial_equal = Bit(1)
+        self.initial_larger = Bit(0)
+        self.equal = Bit()
+        self.larger = Bit()
 
     def update(self, input_byte_a, input_byte_b):
-        for y in range(self.size-1, -1, -1):
+        self.byte[7].update(self.initial_equal, self.initial_larger, input_byte_a.byte[7], input_byte_b.byte[7])
+        self.equal.update(self.byte[7].equal)
+        self.larger.update(self.byte[7].larger)
+        for y in range(self.size-1-1, -1, -1):
             self.byte[y].update(self.equal, self.larger, input_byte_a.byte[y], input_byte_b.byte[y])
             self.equal.update(self.byte[y].equal)
             self.larger.update(self.byte[y].larger)
-        return self.equal, self.larger
+
 
 
 class RAMbyte(Byte):
@@ -159,9 +164,10 @@ class AddByte(Byte):
         self.carry_out = Bit()
 
     def update(self, input_byte_a, input_byte_b, carry_in):
-        for y in range(self.size):
-            carry_in.update(self.byte[y].update(carry_in, input_byte_a.byte[y], input_byte_b.byte[y]))
         self.carry_out.update(carry_in)
+        for y in range(self.size):
+            self.byte[y].update(self.carry_out, input_byte_a.byte[y], input_byte_b.byte[y])
+            self.carry_out.update(self.byte[y].carry_out)
 
 
 class Bus1(Byte):

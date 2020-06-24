@@ -49,6 +49,21 @@ class OR3Bit(Bit):
         self.state = s_or3(a_bit.state, b_bit.state, c_bit.state)
 
 
+class OR4Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit, d_bit):
+        self.state = s_or4(a_bit.state, b_bit.state, c_bit.state, d_bit.state)
+
+
+class OR5Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit, d_bit, e_bit):
+        self.state = s_or4(a_bit.state, b_bit.state, c_bit.state, s_or(d_bit.state, e_bit.state))
+
+
+class OR6Bit(Bit):
+    def update(self, a_bit, b_bit, c_bit, d_bit, e_bit, f_bit):
+        self.state = s_or3(s_or(a_bit.state, b_bit.state), s_or(c_bit.state, d_bit.state), s_or(e_bit.state, f_bit.state))
+
+
 class AddBit(Bit):
 
     def __init__(self):
@@ -65,7 +80,6 @@ class AddBit(Bit):
                   s_xor(input_bit_a.state, input_bit_b.state)
                   )
         )
-        return self.carry_out
 
 
 class CompareBit(Bit):
@@ -96,3 +110,26 @@ class Compare0(Bit):
             in_byte.byte[5].state,
             in_byte.byte[6].state,
             in_byte.byte[7].state))
+
+
+class EnablerBit(Bit):
+
+    def __init__(self):
+        super().__init__()
+        self.and_bit = ANDBit()
+
+    def update(self, input_bit, enable_bit):
+        self.and_bit.update(input_bit, enable_bit)
+        self.state = self.and_bit.state
+
+
+class RegisterBit(Bit):
+    def __init__(self):
+        super().__init__()
+        self.Enabler = EnablerBit()
+        self.Memory = MemoryBit()
+
+    def update(self, set_bit, enable_bit, input_bit):
+        self.Memory.update(set_bit, input_bit)
+        self.Enabler.update(self.Memory, enable_bit)
+        self.state = self.Enabler.state
