@@ -15,7 +15,6 @@ class RAM256byte(Byte):
         self.nibbley = Nibble()
 
     def update(self, set_bit, enable_bit, input_byte, set_mar, address):
-
         self.MAR.update(set_mar, address)
         self.nibblex, self.nibbley = byte2nibble(self.MAR)
         addr_x = decode4x16(self.nibblex)  # unique 8-array
@@ -46,6 +45,14 @@ class RAM256byte(Byte):
         for x in range(self.AddressSize ** 2):
             if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
                 self.RAM[x].Reg.Memory.report()
+
+    def return_Address(self, address):
+        self.nibblex, self.nibbley = byte2nibble(address)
+        addr_x = decode4x16(self.nibblex)  # unique 8-array
+        addr_y = decode4x16(self.nibbley)  # unique 8-array
+        for x in range(self.AddressSize ** 2):
+            if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
+                return [self.RAM[x].Reg.Memory.byte[i].state for i in range(8)]
 
 
 class FlagRegister(Nibble):

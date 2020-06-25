@@ -148,7 +148,7 @@ class BootProcess:
         self.pointer = np.array([0, 0, 0, 0, 0, 0, 0, 0])
 
 
-def run_computer(run_time):
+def run_computer():
     # t_clock = np.zeros(run_time, dtype=float)
     # t_clock_set = np.zeros(run_time, dtype=float)
     # t_clock_enable = np.zeros(run_time, dtype=float)
@@ -157,7 +157,9 @@ def run_computer(run_time):
     my_computer = Computer()
     booter = BootProcess()
     multi_purpose_byte = Byte()
-    multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
+    multi_purpose_byte_b = Byte()
+    multi_purpose_byte.initial_set(np.array([1, 1, 1, 1, 1, 1, 1, 1]))
+    multi_purpose_byte_b.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     # Boot to RAM
     booter.update(my_computer, 'DATA', 'R0')  # Load Data to R0 as Operand 1
@@ -170,15 +172,20 @@ def run_computer(run_time):
     booter.update(my_computer, 'CLF')  # Clear Flags
     booter.update(my_computer, 'CMP', 'R1', 'R0')  # Compare R1 >= R0
     booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
-    # booter.update(my_computer, 'JUMP')  # JUMP to Address stored in next byte
     booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # JUMP to Address stored in next byte
     booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # Address to which we JUMP
-    booter.update(my_computer, 'DATA', 'R3')  # Load Data to R3 as RAM Address
-    booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # Goodbye Message
 
+    # Goodbye Sequence
+    booter.update(my_computer, 'DATA', 'R3')  # Load Data to R3 as RAM Address of Goodbye Store
+    booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # Goodbye Store
+    booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as Goodbye Message
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # Goodbye Message
+    booter.update(my_computer, 'STORE', 'R3', 'R2')  # Store R2 at R3 in RAM
 
+    t = 0
 
-    for t in range(run_time):
+    while my_computer.RAM.return_Address(multi_purpose_byte)[0] == 0:
+        t = t + 1
         if ((t - 1) % 48 == 0) & (t > 1):
             print('t = {}'.format(t))
             print('Stepper = ', end='')
@@ -200,7 +207,7 @@ def run_computer(run_time):
             print('R3 = ', end='')
             my_computer.R[3].Memory.report()
             print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
-            my_computer.RAM.report_Address(multi_purpose_byte)
+            my_computer.RAM.report_Address(multi_purpose_byte_b)
 
         my_computer.update()
 
@@ -217,9 +224,8 @@ def run_computer(run_time):
     # plt.show()
 
 
-runtime = 800
 pr = cProfile.Profile()
 pr.enable()
-run_computer(runtime)
+run_computer()
 pr.disable()
 pr.print_stats(sort='cumtime')
