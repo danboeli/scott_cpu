@@ -156,10 +156,10 @@ def run_computer():
 
     my_computer = Computer()
     booter = BootProcess()
+    goodbye_byte = Byte()
     multi_purpose_byte = Byte()
-    multi_purpose_byte_b = Byte()
-    multi_purpose_byte.initial_set(np.array([1, 1, 1, 1, 1, 1, 1, 1]))
-    multi_purpose_byte_b.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
+    goodbye_byte.initial_set(np.array([1, 1, 1, 1, 1, 1, 1, 1]))
+    multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
     # Boot to RAM
     booter.update(my_computer, 'DATA', 'R0')  # Load Data to R0 as Operand 1
@@ -184,7 +184,7 @@ def run_computer():
 
     t = 0
 
-    while my_computer.RAM.return_Address(multi_purpose_byte)[0] == 0:
+    while my_computer.RAM.return_Address(goodbye_byte)[0] == 0:
         t = t + 1
         if ((t - 1) % 48 == 0) & (t > 1):
             print('t = {}'.format(t))
@@ -207,7 +207,7 @@ def run_computer():
             print('R3 = ', end='')
             my_computer.R[3].Memory.report()
             print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
-            my_computer.RAM.report_Address(multi_purpose_byte_b)
+            my_computer.RAM.report_Address(multi_purpose_byte)
 
         my_computer.update()
 
