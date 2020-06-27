@@ -161,22 +161,41 @@ def run_computer():
     goodbye_byte.initial_set(np.array([1, 1, 1, 1, 1, 1, 1, 1]))
     multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
-    # Boot to RAM
-    booter.update(my_computer, 'DATA', 'R0')  # Load Data to R0 as Operand 1
-    booter.update(my_computer, np.array([1, 1, 0, 0, 0, 1, 0, 1]))  # Data to R0
-    booter.update(my_computer, 'DATA', 'R1')  # Load Data to R1 as Operand 2
-    booter.update(my_computer, np.array([1, 0, 0, 0, 0, 1, 1, 1]))  # Data to R1
-    booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as RAM Address
-    booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # Data to R2 which is Result RAM Address
-    booter.update(my_computer, 'ADD', 'R1', 'R0')  # Add R1 + R0 and store in R0 as Result
-    booter.update(my_computer, 'CLF')  # Clear Flags
-    booter.update(my_computer, 'CMP', 'R1', 'R0')  # Compare R1 >= R0
-    booter.update(my_computer, 'STORE', 'R2', 'R0')  # Store R0 at R2 in RAM
-    booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # JUMP to Address stored in next byte
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # Address to which we JUMP
+    # Calculate R0 modulo R1
+
+    # -1- Load R0 and R1 from RAM
+    booter.update(my_computer, 'DATA', 'R0')  # 0- Load Data to R0 as Operand 1
+    booter.update(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 1- Data to R0 "11"
+    booter.update(my_computer, 'DATA', 'R1')  # 2- Load Data to R1 as Operand 2
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
+    # booter.update(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
+    # If R1 is zero stop.
+    booter.update(my_computer, 'CMP', 'R1', 'R1')  # 4- Compare R1 >= R0
+    booter.update(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
+    booter.update(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 6- Address to which we JUMP is 22
+    # If R1 is bigger than R0 the result is R0
+    booter.update(my_computer, 'CMP', 'R1', 'R0')  # 7- Compare R1 >= R0
+    booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # 8- JUMP to Address 16 stored in next byte
+    booter.update(my_computer, np.array([0, 0, 0, 1, 0, 0, 1, 1]))  # 9- Address to which we JUMP is 19
+    # -2-  Invert R1 and add 1
+    booter.update(my_computer, 'DATA', 'R2')  # 10- Load 1 to R2 to add
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 11- Data to R2 "1"
+    booter.update(my_computer, 'NOT', 'R1', 'R3')  # 12- Not R2 to R3
+    booter.update(my_computer, 'ADD', 'R2', 'R3')  # 13- Add R2 + R3 and store in R3 as Result
+    #  -5-  Calculate R0=R0-R1(orig) by calculating R0+R1(inverted,incremented) as long is R0 is bigger than R1
+    booter.update(my_computer, 'ADD', 'R3', 'R0')  # 14- Add R3 + R0 and store in R0 as Result
+    booter.update(my_computer, 'CLF')  # 15- Clear Flags
+    booter.update(my_computer, 'CMP', 'R0', 'R1')  # 16- Compare R0 >= R1
+    booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # 17- JUMP to Address stored in next byte
+    booter.update(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 18- Address to which we JUMP is 11
+    #  -4-  - Save current value of R0
+    booter.update(my_computer, 'DATA', 'R2')  # 19- Load Data to R2 as RAM Address
+    booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # 20- Data to R2 which is Result RAM Address
+    booter.update(my_computer, 'STORE', 'R2', 'R0')  # 21- Store R0 at R2 in RAM
 
     # Goodbye Sequence
-    booter.update(my_computer, 'DATA', 'R3')  # Load Data to R3 as RAM Address of Goodbye Store
+
+    booter.update(my_computer, 'DATA', 'R3')  # 22- Load Data to R3 as RAM Address of Goodbye Store
     booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # Goodbye Store
     booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as Goodbye Message
     booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # Goodbye Message
@@ -198,6 +217,8 @@ def run_computer():
             my_computer.Flags.Larger.report()
             print('Carry Flag = ', end='')
             my_computer.CarryOut.Memory.report()
+            print('Zero Flag = ', end='')
+            my_computer.Flags.Zero.report()
             print('R0 = ', end='')
             my_computer.R[0].Memory.report()
             print('R1 = ', end='')
