@@ -170,7 +170,7 @@ def run_computer():
     booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
     # booter.update(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
     # If R1 is zero stop.
-    booter.update(my_computer, 'CMP', 'R1', 'R1')  # 4- Compare R1 >= R0
+    booter.update(my_computer, 'ADD', 'R1', 'R3')  # 4- Add R1 + 0 and check if result is zero
     booter.update(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
     booter.update(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 6- Address to which we JUMP is 22
     # If R1 is bigger than R0 the result is R0
@@ -187,7 +187,7 @@ def run_computer():
     booter.update(my_computer, 'CLF')  # 15- Clear Flags
     booter.update(my_computer, 'CMP', 'R0', 'R1')  # 16- Compare R0 >= R1
     booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # 17- JUMP to Address stored in next byte
-    booter.update(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 18- Address to which we JUMP is 11
+    booter.update(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # 18- Address to which we JUMP is 14
     #  -4-  - Save current value of R0
     booter.update(my_computer, 'DATA', 'R2')  # 19- Load Data to R2 as RAM Address
     booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # 20- Data to R2 which is Result RAM Address
@@ -196,10 +196,10 @@ def run_computer():
     # Goodbye Sequence
 
     booter.update(my_computer, 'DATA', 'R3')  # 22- Load Data to R3 as RAM Address of Goodbye Store
-    booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # Goodbye Store
-    booter.update(my_computer, 'DATA', 'R2')  # Load Data to R2 as Goodbye Message
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # Goodbye Message
-    booter.update(my_computer, 'STORE', 'R3', 'R2')  # Store R2 at R3 in RAM
+    booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # 23- Goodbye Store
+    booter.update(my_computer, 'DATA', 'R2')  # 24- Load Data to R2 as Goodbye Message
+    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 25- Goodbye Message
+    booter.update(my_computer, 'STORE', 'R3', 'R2')  # 26- Store R2 at R3 in RAM
 
     t = 0
 
