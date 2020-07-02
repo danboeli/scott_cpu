@@ -5,6 +5,15 @@ class Bit:
     def __init__(self, init_state=0):
         self.state = init_state
 
+    def __repr__(self):
+        return '{}'.format(self.state)
+
+    def __add__(self, other):
+        return '{}{}'.format(self.state, other)
+
+    def __radd__(self, other):
+        return '{}{}'.format(other, self.state)
+
     def update(self, in_bit):
         self.state = in_bit.state
 

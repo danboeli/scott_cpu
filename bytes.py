@@ -9,6 +9,20 @@ class Byte:
     def __init__(self):
         self.byte = [Bit() for i in range(self.size)]
 
+    def __repr__(self):
+        return '{}{}{}{} {}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+
+    def __add__(self, other):
+        return '{}{}{}{} {}{}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
+
+    def __radd__(self, other, order='number'):
+        if order=='byte':
+            return '{}{}{}{} {}{}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7])
+        else:
+            return '{}{}{}{} {}{}{}{}{}'.format(other, self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+            
+
+
     def initial_set(self, data_input):
         for y in np.arange(self.size):
             self.byte[y].state = data_input[self.size-1-y]  # Invert to allow to enter in reading order (last bit first)

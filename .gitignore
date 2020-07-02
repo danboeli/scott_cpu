@@ -1,3 +1,5 @@
 /.idea
 /venv
 for_testing_only.py
+/__pycache__
+/.vs

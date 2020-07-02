@@ -24,7 +24,7 @@ class Computer(Byte):
         self.CarryOut = RegisterBit()
         self.IOBus = IOBus()
 
-    def update(self):
+    def __call__(self):
         self.Control.update(self.IR, self.Flags)
         self.BUS.reset()
 
@@ -123,7 +123,7 @@ class BootProcess:
         self.Address.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))
         self.interpreter = Interpreter()
 
-    def update(self, computer, cmd1, *cmd2):
+    def __call__(self, computer, cmd1, *cmd2):
         
         if isinstance(cmd1, str):  # For commands
             if len(cmd2) == 4:
@@ -164,42 +164,42 @@ def run_computer():
     # Calculate R0 modulo R1
 
     # -1- Load R0 and R1 from RAM
-    booter.update(my_computer, 'DATA', 'R0')  # 0- Load Data to R0 as Operand 1
-    booter.update(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 1- Data to R0 "11"
-    booter.update(my_computer, 'DATA', 'R1')  # 2- Load Data to R1 as Operand 2
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
+    booter(my_computer, 'DATA', 'R0')  # 0- Load Data to R0 as Operand 1
+    booter(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 1- Data to R0 "11"
+    booter(my_computer, 'DATA', 'R1')  # 2- Load Data to R1 as Operand 2
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
     # booter.update(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
     # If R1 is zero stop.
-    booter.update(my_computer, 'ADD', 'R1', 'R3')  # 4- Add R1 + 0 and check if result is zero
-    booter.update(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
-    booter.update(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 6- Address to which we JUMP is 22
+    booter(my_computer, 'ADD', 'R1', 'R3')  # 4- Add R1 + 0 and check if result is zero
+    booter(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
+    booter(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 6- Address to which we JUMP is 22
     # If R1 is bigger than R0 the result is R0
-    booter.update(my_computer, 'CMP', 'R1', 'R0')  # 7- Compare R1 >= R0
-    booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # 8- JUMP to Address 16 stored in next byte
-    booter.update(my_computer, np.array([0, 0, 0, 1, 0, 0, 1, 1]))  # 9- Address to which we JUMP is 19
+    booter(my_computer, 'CMP', 'R1', 'R0')  # 7- Compare R1 >= R0
+    booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 8- JUMP to Address 16 stored in next byte
+    booter(my_computer, np.array([0, 0, 0, 1, 0, 0, 1, 1]))  # 9- Address to which we JUMP is 19
     # -2-  Invert R1 and add 1
-    booter.update(my_computer, 'DATA', 'R2')  # 10- Load 1 to R2 to add
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 11- Data to R2 "1"
-    booter.update(my_computer, 'NOT', 'R1', 'R3')  # 12- Not R2 to R3
-    booter.update(my_computer, 'ADD', 'R2', 'R3')  # 13- Add R2 + R3 and store in R3 as Result
+    booter(my_computer, 'DATA', 'R2')  # 10- Load 1 to R2 to add
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 11- Data to R2 "1"
+    booter(my_computer, 'NOT', 'R1', 'R3')  # 12- Not R2 to R3
+    booter(my_computer, 'ADD', 'R2', 'R3')  # 13- Add R2 + R3 and store in R3 as Result
     #  -5-  Calculate R0=R0-R1(orig) by calculating R0+R1(inverted,incremented) as long is R0 is bigger than R1
-    booter.update(my_computer, 'ADD', 'R3', 'R0')  # 14- Add R3 + R0 and store in R0 as Result
-    booter.update(my_computer, 'CLF')  # 15- Clear Flags
-    booter.update(my_computer, 'CMP', 'R0', 'R1')  # 16- Compare R0 >= R1
-    booter.update(my_computer, 'JMPIF', 0, 1, 0, 0)  # 17- JUMP to Address stored in next byte
-    booter.update(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # 18- Address to which we JUMP is 14
+    booter(my_computer, 'ADD', 'R3', 'R0')  # 14- Add R3 + R0 and store in R0 as Result
+    booter(my_computer, 'CLF')  # 15- Clear Flags
+    booter(my_computer, 'CMP', 'R0', 'R1')  # 16- Compare R0 >= R1
+    booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 17- JUMP to Address stored in next byte
+    booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # 18- Address to which we JUMP is 14
     #  -4-  - Save current value of R0
-    booter.update(my_computer, 'DATA', 'R2')  # 19- Load Data to R2 as RAM Address
-    booter.update(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # 20- Data to R2 which is Result RAM Address
-    booter.update(my_computer, 'STORE', 'R2', 'R0')  # 21- Store R0 at R2 in RAM
+    booter(my_computer, 'DATA', 'R2')  # 19- Load Data to R2 as RAM Address
+    booter(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # 20- Data to R2 which is Result RAM Address
+    booter(my_computer, 'STORE', 'R2', 'R0')  # 21- Store R0 at R2 in RAM
 
     # Goodbye Sequence
 
-    booter.update(my_computer, 'DATA', 'R3')  # 22- Load Data to R3 as RAM Address of Goodbye Store
-    booter.update(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # 23- Goodbye Store
-    booter.update(my_computer, 'DATA', 'R2')  # 24- Load Data to R2 as Goodbye Message
-    booter.update(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 25- Goodbye Message
-    booter.update(my_computer, 'STORE', 'R3', 'R2')  # 26- Store R2 at R3 in RAM
+    booter(my_computer, 'DATA', 'R3')  # 22- Load Data to R3 as RAM Address of Goodbye Store
+    booter(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # 23- Goodbye Store
+    booter(my_computer, 'DATA', 'R2')  # 24- Load Data to R2 as Goodbye Message
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 25- Goodbye Message
+    booter(my_computer, 'STORE', 'R3', 'R2')  # 26- Store R2 at R3 in RAM
 
     t = 0
 
@@ -207,30 +207,20 @@ def run_computer():
         t = t + 1
         if ((t - 1) % 48 == 0) & (t > 1):
             print('t = {}'.format(t))
-            print('Stepper = ', end='')
-            my_computer.Control.Stepper.report_byte()
-            print('Instruction Register = ', end='')
-            my_computer.IR.report_byte()
-            print('Instruction Address Register = ', end='')
-            my_computer.IAR.Memory.report()
-            print('Larger Flag = ', end='')
-            my_computer.Flags.Larger.report()
-            print('Carry Flag = ', end='')
-            my_computer.CarryOut.Memory.report()
-            print('Zero Flag = ', end='')
-            my_computer.Flags.Zero.report()
-            print('R0 = ', end='')
-            my_computer.R[0].Memory.report()
-            print('R1 = ', end='')
-            my_computer.R[1].Memory.report()
-            print('R2 = ', end='')
-            my_computer.R[2].Memory.report()
-            print('R3 = ', end='')
-            my_computer.R[3].Memory.report()
+            print(my_computer.Control.Stepper.__radd__('Stepper= ', order='byte'))
+            print(my_computer.IR.__radd__('Instruction Register = ', order='byte'))
+            print('Instruction Address Register = ' + my_computer.IAR.Memory)
+            print('Larger Flag = ' + my_computer.Flags.Larger)
+            print('Carry Flag = ' + my_computer.CarryOut.Memory)
+            print('Zero Flag = ' + my_computer.Flags.Zero)
+            print('R0 = ' + my_computer.R[0].Memory)
+            print('R1 = ' + my_computer.R[1].Memory)
+            print('R2 = ' + my_computer.R[2].Memory)
+            print('R3 = ' + my_computer.R[3].Memory)
             print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
             my_computer.RAM.report_Address(multi_purpose_byte)
 
-        my_computer.update()
+        my_computer()
 
         # t_clock[t] = my_computer.Control.clock.clock.state
         # t_step[t, :] = np.array(my_computer.Control.Stepper.get_data())
