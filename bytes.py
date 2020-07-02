@@ -12,32 +12,25 @@ class Byte:
     def __repr__(self):
         return '{}{}{}{} {}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
 
-    def __add__(self, other):
-        return '{}{}{}{} {}{}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
+    def __add__(self, other, order='number'):
+        if order=='byte':
+            return '{}{}{}{} {}{}{}{}{}'.format(self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7], other)
+        else:
+            return '{}{}{}{} {}{}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
 
     def __radd__(self, other, order='number'):
         if order=='byte':
-            return '{}{}{}{} {}{}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7])
+            return '{}{}{}{}{} {}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7])
         else:
-            return '{}{}{}{} {}{}{}{}{}'.format(other, self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+            return '{}{}{}{}{} {}{}{}{}'.format(other, self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
             
-
+    def __call__(self, input_byte):
+        for y in np.arange(self.size):
+            self.byte[y](input_byte.byte[y])
 
     def initial_set(self, data_input):
         for y in np.arange(self.size):
             self.byte[y].state = data_input[self.size-1-y]  # Invert to allow to enter in reading order (last bit first)
-
-    def update(self, input_byte):
-        for y in np.arange(self.size):
-            self.byte[y].update(input_byte.byte[y])
-
-    def report(self):
-        for y in range(self.size-1, -1, -1):
-            self.byte[y].report(y)
-
-    def report_byte(self):
-        for y in range(self.size):
-            self.byte[y].report(self.size-y-1)
 
     def get_data(self):
         # return self.byte
@@ -49,9 +42,9 @@ class MemoryByte(Byte):
     def __init__(self):
         self.byte = [MemoryBit() for i in range(self.size)]
 
-    def update(self, set_bit, input_byte):
+    def __call__(self, set_bit, input_byte):
         for y in np.arange(self.size):
-            self.byte[y].update(set_bit, input_byte.byte[y])
+            self.byte[y](set_bit, input_byte.byte[y])
 
 
 class Register(Byte):
@@ -60,20 +53,35 @@ class Register(Byte):
         self.Enabler = Enabler()
         self.Memory = MemoryByte()
 
-    def update(self, set_bit, enable_bit, input_byte):
-        self.Memory.update(set_bit, input_byte)
-        self.Enabler.update(self.Memory, enable_bit)
+    def __call__(self, set_bit, enable_bit, input_byte):
+        self.Memory(set_bit, input_byte)
+        self.Enabler(self.Memory, enable_bit)
 
         for y in np.arange(self.size):
-            self.byte[y].update(self.Enabler.byte[y])
+            self.byte[y](self.Enabler.byte[y])
 
 
 class Nibble(Byte):
     size = 4
 
+    def __repr__(self):
+        return '{}{}{}{}'.format(self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+
+    def __add__(self, other, order='number'):
+        if order=='byte':
+            return '{}{}{}{}{}'.format(self.byte[0], self.byte[1], self.byte[2], self.byte[3], other)
+        else:
+            return '{}{}{}{}{}'.format(self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
+
+    def __radd__(self, other, order='number'):
+        if order=='byte':
+            return '{}{}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3])
+        else:
+            return '{}{}{}{}{}'.format(other, self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+
 
 class Decoder3x8(Byte):
-    def update(self, op1, op2, op3):
+    def __call__(self, op1, op2, op3):
         self.byte[0].state = s_and3(s_not(op1.state), s_not(op2.state), s_not(op3.state))  # 0/0/0
         self.byte[1].state = s_and3(s_not(op1.state), s_not(op2.state), op3.state)  # 0/0/1
         self.byte[2].state = s_and3(s_not(op1.state), op2.state, s_not(op3.state))  # 0/1/0
@@ -85,7 +93,7 @@ class Decoder3x8(Byte):
 
 
 class Decoder2x4(Nibble):
-    def update(self, op1, op2):
+    def __call__(self, op1, op2):
         self.byte[0].state = s_and(s_not(op1.state), s_not(op2.state))  # 0/0
         self.byte[1].state = s_and(s_not(op1.state), op2.state)  # 0/1
         self.byte[2].state = s_and(op1.state, s_not(op2.state))  # 1/0
@@ -93,20 +101,17 @@ class Decoder2x4(Nibble):
 
 
 class Enabler(Byte):
-
     def __init__(self):
         self.byte = [Bit() for i in range(self.size)]
         self.and_bit = ANDBit()
 
-    def update(self, input_byte, enable_bit):
+    def __call__(self, input_byte, enable_bit):
         for y in np.arange(self.size):
-            self.and_bit.update(input_byte.byte[y], enable_bit)
-            self.byte[y].update(self.and_bit)
+            self.and_bit(input_byte.byte[y], enable_bit)
+            self.byte[y](self.and_bit)
 
 
 class CompareByte(Byte):
-    size = 8
-
     def __init__(self):
         self.byte = [CompareBit() for i in range(self.size)]
         self.initial_equal = Bit(1)
@@ -114,21 +119,19 @@ class CompareByte(Byte):
         self.equal = Bit()
         self.larger = Bit()
 
-    def update(self, input_byte_a, input_byte_b):
-        self.byte[7].update(self.initial_equal, self.initial_larger, input_byte_a.byte[7], input_byte_b.byte[7])
-        self.equal.update(self.byte[7].equal)
-        self.larger.update(self.byte[7].larger)
+    def __call__(self, input_byte_a, input_byte_b):
+        self.byte[7](self.initial_equal, self.initial_larger, input_byte_a.byte[7], input_byte_b.byte[7])
+        self.equal(self.byte[7].equal)
+        self.larger(self.byte[7].larger)
         for y in range(self.size-1-1, -1, -1):
-            self.byte[y].update(self.equal, self.larger, input_byte_a.byte[y], input_byte_b.byte[y])
-            self.equal.update(self.byte[y].equal)
-            self.larger.update(self.byte[y].larger)
+            self.byte[y](self.equal, self.larger, input_byte_a.byte[y], input_byte_b.byte[y])
+            self.equal(self.byte[y].equal)
+            self.larger(self.byte[y].larger)
 
 
 
 class RAMbyte(Byte):
     #  Address is [0-15]x[0-15]
-    size = 8
-
     def __init__(self, create_addr_x, create_addr_y):
         super().__init__()
         self.Reg = Register()
@@ -142,50 +145,48 @@ class RAMbyte(Byte):
         self.y = np.zeros(16, dtype=np.bool)
         self.y[self.addr_y] = True
 
-    def update(self, set_bit, enable_bit, input_byte, addr_x, addr_y):
-        self.Active.update(checkIfactive(addr_x, addr_y, self.x, self.y))
-        self.EnableBit.update(self.Active, enable_bit)
-        self.SetBit.update(self.Active, set_bit)
-        self.Reg.update(self.SetBit, self.EnableBit, input_byte)
+    def __call__(self, set_bit, enable_bit, input_byte, addr_x, addr_y):
+        self.Active(checkIfactive(addr_x, addr_y, self.x, self.y))
+        self.EnableBit(self.Active, enable_bit)
+        self.SetBit(self.Active, set_bit)
+        self.Reg(self.SetBit, self.EnableBit, input_byte)
 
         for y in np.arange(self.size):
-            self.byte[y].update(self.Reg.byte[y])
+            self.byte[y](self.Reg.byte[y])
 
 
 class ANDer(Byte):
-    def update(self, a_byte, b_byte):
+    def __call__(self, a_byte, b_byte):
         for x in range(8):
             self.byte[x].state = s_and(a_byte.byte[x].state, b_byte.byte[x].state)
 
 
 class ORer(Byte):
-    def update(self, a_byte, b_byte):
+    def __call__(self, a_byte, b_byte):
         for x in range(8):
             self.byte[x].state = s_or(a_byte.byte[x].state, b_byte.byte[x].state)
 
 
 class NOTer(Byte):
-    def update(self, a_byte):
+    def __call__(self, a_byte):
         for x in range(8):
             self.byte[x].state = s_not(a_byte.byte[x].state)
 
 
 class AddByte(Byte):
-    size = 8
-
     def __init__(self):
         self.byte = [AddBit() for i in range(self.size)]
         self.carry_out = Bit()
 
-    def update(self, input_byte_a, input_byte_b, carry_in):
-        self.carry_out.update(carry_in)
+    def __call__(self, input_byte_a, input_byte_b, carry_in):
+        self.carry_out(carry_in)
         for y in range(self.size):
-            self.byte[y].update(self.carry_out, input_byte_a.byte[y], input_byte_b.byte[y])
-            self.carry_out.update(self.byte[y].carry_out)
+            self.byte[y](self.carry_out, input_byte_a.byte[y], input_byte_b.byte[y])
+            self.carry_out(self.byte[y].carry_out)
 
 
 class Bus1(Byte):
-    def update(self, in_byte, bus1_bit):
+    def __call__(self, in_byte, bus1_bit):
         self.byte[0].state = s_or(in_byte.byte[0].state, bus1_bit.state)
         for y in range(1, 8):
             self.byte[y].state=s_and(in_byte.byte[y].state, s_not(bus1_bit.state))
@@ -196,7 +197,7 @@ class Bus(Byte):
         for y in range(self.size):
             self.byte[y].state = 0
 
-    def update(self, in_byte):
+    def __call__(self, in_byte):
 
         # Debug Section
         selfsum = 0

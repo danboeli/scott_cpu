@@ -34,8 +34,8 @@ def decode4x16(in_bits):
 def byte2nibble(in_byte):
     n_out = [Nibble() for i in range(2)]
     for y in range(4):
-        n_out[0].byte[y].update(in_byte.byte[y])
-        n_out[1].byte[y].update(in_byte.byte[y+4])
+        n_out[0].byte[y](in_byte.byte[y])
+        n_out[1].byte[y](in_byte.byte[y+4])
     return n_out
 
 

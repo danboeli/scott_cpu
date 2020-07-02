@@ -25,53 +25,53 @@ class Computer(Byte):
         self.IOBus = IOBus()
 
     def __call__(self):
-        self.Control.update(self.IR, self.Flags)
+        self.Control(self.IR, self.Flags)
         self.BUS.reset()
 
         for i in range(2):
             # Loop through this twice, in order to ensure that Bus can travel everywhere
 
             # IAR I/O connected to BUS
-            self.IAR.update(self.Control.Set_IAR, self.Control.Enable_IAR, self.BUS)
-            self.BUS.update(self.IAR)
+            self.IAR(self.Control.Set_IAR, self.Control.Enable_IAR, self.BUS)
+            self.BUS(self.IAR)
 
             # IR I/ connected to BUS, /O TBD
-            self.IR.update(self.Control.Set_IR, self.BUS)
+            self.IR(self.Control.Set_IR, self.BUS)
 
             # RAM I/O connected to BUS
-            self.RAM.update(self.Control.Set_RAM, self.Control.Enable_RAM, self.BUS,
+            self.RAM(self.Control.Set_RAM, self.Control.Enable_RAM, self.BUS,
                             self.Control.Set_MAR, self.BUS)
-            self.BUS.update(self.RAM)
+            self.BUS(self.RAM)
 
             # R0-3 I/O connected to BUS
-            self.R[0].update(self.Control.Set_R[0], self.Control.Enable_R[0], self.BUS)
-            self.BUS.update(self.R[0])
-            self.R[1].update(self.Control.Set_R[1], self.Control.Enable_R[1], self.BUS)
-            self.BUS.update(self.R[1])
-            self.R[2].update(self.Control.Set_R[2], self.Control.Enable_R[2], self.BUS)
-            self.BUS.update(self.R[2])
-            self.R[3].update(self.Control.Set_R[3], self.Control.Enable_R[3], self.BUS)
-            self.BUS.update(self.R[3])
+            self.R[0](self.Control.Set_R[0], self.Control.Enable_R[0], self.BUS)
+            self.BUS(self.R[0])
+            self.R[1](self.Control.Set_R[1], self.Control.Enable_R[1], self.BUS)
+            self.BUS(self.R[1])
+            self.R[2](self.Control.Set_R[2], self.Control.Enable_R[2], self.BUS)
+            self.BUS(self.R[2])
+            self.R[3](self.Control.Set_R[3], self.Control.Enable_R[3], self.BUS)
+            self.BUS(self.R[3])
 
             # TMP I/ connect to BUS, /O connected to BUS1
-            self.TMP.update(self.Control.Set_TMP, self.BUS)
-            self.BUS1.update(self.TMP, self.Control.Bus1bit)
+            self.TMP(self.Control.Set_TMP, self.BUS)
+            self.BUS1(self.TMP, self.Control.Bus1bit)
             # ALU I/ connected to BUS1, /O connected to ACC
-            self.ALU.update(self.BUS, self.BUS1, self.CarryOut, self.Control.ALU_OP)
+            self.ALU(self.BUS, self.BUS1, self.CarryOut, self.Control.ALU_OP)
             # FLAG I/ connected to ALU flags, /O connected to CU
-            self.Flags.update(self.Control.Set_Flags,
+            self.Flags(self.Control.Set_Flags,
                               self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
-            self.CarryOut.update(self.Control.Set_CarryFlag, self.Control.Enable_CarryFlag, self.Flags.Carry)
+            self.CarryOut(self.Control.Set_CarryFlag, self.Control.Enable_CarryFlag, self.Flags.Carry)
             # ACC I/ connected to ALU, /O connected to BUS
-            self.ACC.update(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
-            self.BUS.update(self.ACC)
+            self.ACC(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
+            self.BUS(self.ACC)
 
-            self.IOBus.update(self.Control.IOClock_Set, self.Control.IOClock_Enable,
+            self.IOBus(self.Control.IOClock_Set, self.Control.IOClock_Enable,
                               self.Control.IO_OUTPUT, self.Control.IO_DATA_ADDRESS, self.BUS)
             # I/O Bus are the loose ends currently dangling out of the computer
 
 class Interpreter(Byte):
-    def update(self, cmd1, *cmd2):
+    def __call__(self, cmd1, *cmd2):
         if cmd1 == 'ADD':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # ALU 0
         if cmd1 == 'AND':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # ALU 1
         if cmd1 == 'SHR':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # ALU 2 Todo: Swap SHL / SHR??
@@ -127,13 +127,13 @@ class BootProcess:
         
         if isinstance(cmd1, str):  # For commands
             if len(cmd2) == 4:
-                self.interpreter.update(cmd1, cmd2[0], cmd2[1], cmd2[2], cmd2[3])
+                self.interpreter(cmd1, cmd2[0], cmd2[1], cmd2[2], cmd2[3])
             if len(cmd2) == 2:
-                self.interpreter.update(cmd1, cmd2[0], cmd2[1])
+                self.interpreter(cmd1, cmd2[0], cmd2[1])
             if len(cmd2) == 1:
-                self.interpreter.update(cmd1, cmd2[0])
+                self.interpreter(cmd1, cmd2[0])
             if len(cmd2) == 0:
-                self.interpreter.update(cmd1)
+                self.interpreter(cmd1)
         if isinstance(cmd1, (np.ndarray, np.generic)):  # For data
             self.interpreter.initial_set(cmd1)
 
@@ -168,7 +168,7 @@ def run_computer():
     booter(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 1- Data to R0 "11"
     booter(my_computer, 'DATA', 'R1')  # 2- Load Data to R1 as Operand 2
     booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
-    # booter.update(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
+    # booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
     # If R1 is zero stop.
     booter(my_computer, 'ADD', 'R1', 'R3')  # 4- Add R1 + 0 and check if result is zero
     booter(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
@@ -203,6 +203,8 @@ def run_computer():
 
     t = 0
 
+    print('Created Bits: {}'.format(Bit.bitcount)) # Switch bitcount from Bit to NAND after switch from logic functions to logic objects
+
     while my_computer.RAM.return_Address(goodbye_byte)[0] == 0:
         t = t + 1
         if ((t - 1) % 48 == 0) & (t > 1):
@@ -217,8 +219,9 @@ def run_computer():
             print('R1 = ' + my_computer.R[1].Memory)
             print('R2 = ' + my_computer.R[2].Memory)
             print('R3 = ' + my_computer.R[3].Memory)
-            print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
-            my_computer.RAM.report_Address(multi_purpose_byte)
+            # print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
+            # my_computer.RAM.report_Address(multi_purpose_byte)
+            print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ' + my_computer.RAM.report_Address(multi_purpose_byte))
 
         my_computer()
 
