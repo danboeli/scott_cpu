@@ -209,7 +209,7 @@ def run_computer():
         t = t + 1
         if ((t - 1) % 48 == 0) & (t > 1):
             print('t = {}'.format(t))
-            print(my_computer.Control.Stepper.__radd__('Stepper= ', order='byte'))
+            print(my_computer.Control.State_Machine.__radd__('State Machine= ', order='byte'))
             print(my_computer.IR.__radd__('Instruction Register = ', order='byte'))
             print('Instruction Address Register = ' + my_computer.IAR.Memory)
             print('Larger Flag = ' + my_computer.Flags.Larger)
@@ -219,14 +219,12 @@ def run_computer():
             print('R1 = ' + my_computer.R[1].Memory)
             print('R2 = ' + my_computer.R[2].Memory)
             print('R3 = ' + my_computer.R[3].Memory)
-            # print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ', end='')
-            # my_computer.RAM.report_Address(multi_purpose_byte)
             print('RAM@[0, 0, 0, 1, 1, 1, 1, 1] = ' + my_computer.RAM.report_Address(multi_purpose_byte))
 
         my_computer()
 
         # t_clock[t] = my_computer.Control.clock.clock.state
-        # t_step[t, :] = np.array(my_computer.Control.Stepper.get_data())
+        # t_step[t, :] = np.array(my_computer.Control.State_Machine.get_data())
 
     # oplot = plt.figure()
     #
