@@ -40,7 +40,7 @@ class Computer(Byte):
 
             # RAM I/O connected to BUS
             self.RAM(self.Control.Set_RAM, self.Control.Enable_RAM, self.BUS,
-                            self.Control.Set_MAR, self.BUS)
+                     self.Control.Set_MAR, self.BUS)
             self.BUS(self.RAM)
 
             # R0-3 I/O connected to BUS
@@ -60,34 +60,40 @@ class Computer(Byte):
             self.ALU(self.BUS, self.BUS1, self.CarryOut, self.Control.ALU_OP)
             # FLAG I/ connected to ALU flags, /O connected to CU
             self.Flags(self.Control.Set_Flags,
-                              self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
+                       self.ALU.Carry_out, self.ALU.larger, self.ALU.equal, self.ALU.Zero)
             self.CarryOut(self.Control.Set_CarryFlag, self.Control.Enable_CarryFlag, self.Flags.Carry)
             # ACC I/ connected to ALU, /O connected to BUS
             self.ACC(self.Control.Set_ACC, self.Control.Enable_ACC, self.ALU)
             self.BUS(self.ACC)
 
             self.IOBus(self.Control.IOClock_Set, self.Control.IOClock_Enable,
-                              self.Control.IO_OUTPUT, self.Control.IO_DATA_ADDRESS, self.BUS)
+                       self.Control.IO_OUTPUT, self.Control.IO_DATA_ADDRESS, self.BUS)
             # I/O Bus are the loose ends currently dangling out of the computer
+
 
 class Interpreter(Byte):
     def __call__(self, cmd1, *cmd2):
         if cmd1 == 'ADD':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # ALU 0
         if cmd1 == 'AND':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # ALU 1
-        if cmd1 == 'SHR':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # ALU 2 Todo: Swap SHL / SHR??
+        if cmd1 == 'SHR':       self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # ALU 2
         if cmd1 == 'XOR':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # ALU 3
-        if cmd1 == 'SHL':       self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # ALU 4 Todo: Swap SHL / SHR??
+        if cmd1 == 'SHL':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # ALU 4
         if cmd1 == 'OR':        self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # ALU 5
         if cmd1 == 'NOT':       self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))  # ALU 6
         if cmd1 == 'CMP':       self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))  # ALU 7
 
-        if cmd1 == 'LOAD':      self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # CMD 0 Load RB from RAM Address RA
-        if cmd1 == 'JUMP':      self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # CMD 1 Next go to the RAM Address stored in next Byte
-        if cmd1 == 'DATA':      self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # CMD 2 Next Byte in RAM is data, store this in RB
+        if cmd1 == 'LOAD':      self.initial_set(
+            np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # CMD 0 Load RB from RAM Address RA
+        if cmd1 == 'JUMP':      self.initial_set(
+            np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # CMD 1 Next go to the RAM Address stored in next Byte
+        if cmd1 == 'DATA':      self.initial_set(
+            np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # CMD 2 Next Byte in RAM is data, store this in RB
         if cmd1 == 'CLF':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # CMD 3 Clear Flags
         if cmd1 == 'STORE':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # CMD 4 Store RB at RAM Address RA
-        if cmd1 == 'JMPIF':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 0]))  # CMD 5 Jump if to next RAM Address
-        if cmd1 == 'JMPR':      self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
+        if cmd1 == 'JMPIF':     self.initial_set(
+            np.array([0, 0, 0, 0, 1, 0, 1, 0]))  # CMD 5 Jump if to next RAM Address
+        if cmd1 == 'JMPR':      self.initial_set(
+            np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
         if cmd1 == 'IN Data':   self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # CMD 7 INPUT Data
         if cmd1 == 'OUT Data':  self.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 0]))  # CMD 7 OUTPUT Data
         if cmd1 == 'IN Addr':   self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # CMD 7 INPUT Address
@@ -112,7 +118,7 @@ class Interpreter(Byte):
             if cmd2[1] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
             if cmd2[1] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
             if cmd2[1] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
-        
+
 
 class BootProcess:
     def __init__(self, pointer=0):
@@ -124,7 +130,7 @@ class BootProcess:
         self.interpreter = Interpreter()
 
     def __call__(self, computer, cmd1, *cmd2):
-        
+
         if isinstance(cmd1, str):  # For commands
             if len(cmd2) == 4:
                 self.interpreter(cmd1, cmd2[0], cmd2[1], cmd2[2], cmd2[3])
@@ -138,7 +144,7 @@ class BootProcess:
             self.interpreter.initial_set(cmd1)
 
         computer.RAM.initial_RAM_set(self.Address, self.interpreter)
-        
+
         self.AddressPointer = self.AddressPointer + 1
 
         self.pointer_bin = np.array([int(x) for x in list('{0:0b}'.format(self.AddressPointer))])
@@ -161,37 +167,59 @@ def run_computer():
     goodbye_byte.initial_set(np.array([1, 1, 1, 1, 1, 1, 1, 1]))
     multi_purpose_byte.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 1]))
 
-    # Calculate R0 modulo R1
-
-    # -1- Load R0 and R1 from RAM
-    booter(my_computer, 'DATA', 'R0')  # 0- Load Data to R0 as Operand 1
-    booter(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 1- Data to R0 "11"
+    # Calculate R1=2 x R0=4 = R2
+    booter(my_computer, 'DATA', 'R3')  # 0- Load Data to R3 as Stop Signal
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 1- Data to R3 "1"
     booter(my_computer, 'DATA', 'R1')  # 2- Load Data to R1 as Operand 2
-    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
-    # booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
-    # If R1 is zero stop.
-    booter(my_computer, 'ADD', 'R1', 'R3')  # 4- Add R1 + 0 and check if result is zero
-    booter(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
-    booter(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 6- Address to which we JUMP is 22
-    # If R1 is bigger than R0 the result is R0
-    booter(my_computer, 'CMP', 'R1', 'R0')  # 7- Compare R1 >= R0
-    booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 8- JUMP to Address 16 stored in next byte
-    booter(my_computer, np.array([0, 0, 0, 1, 0, 0, 1, 1]))  # 9- Address to which we JUMP is 19
-    # -2-  Invert R1 and add 1
-    booter(my_computer, 'DATA', 'R2')  # 10- Load 1 to R2 to add
-    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 11- Data to R2 "1"
-    booter(my_computer, 'NOT', 'R1', 'R3')  # 12- Not R2 to R3
-    booter(my_computer, 'ADD', 'R2', 'R3')  # 13- Add R2 + R3 and store in R3 as Result
-    #  -5-  Calculate R0=R0-R1(orig) by calculating R0+R1(inverted,incremented) as long is R0 is bigger than R1
-    booter(my_computer, 'ADD', 'R3', 'R0')  # 14- Add R3 + R0 and store in R0 as Result
-    booter(my_computer, 'CLF')  # 15- Clear Flags
-    booter(my_computer, 'CMP', 'R0', 'R1')  # 16- Compare R0 >= R1
-    booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 17- JUMP to Address stored in next byte
-    booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # 18- Address to which we JUMP is 14
-    #  -4-  - Save current value of R0
-    booter(my_computer, 'DATA', 'R2')  # 19- Load Data to R2 as RAM Address
-    booter(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # 20- Data to R2 which is Result RAM Address
-    booter(my_computer, 'STORE', 'R2', 'R0')  # 21- Store R0 at R2 in RAM
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # 3- Data to R1 "2"
+    booter(my_computer, 'DATA', 'R0')  # 4- Load Data to R0 ad Operand 1
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # 5- Data to R0 "4"
+    booter(my_computer, 'XOR', 'R2', 'R2')  # 6- Make sure R2 is zero
+    booter(my_computer, 'CLF')  # 7- Clear Flags TARGET 3
+    booter(my_computer, 'SHR', 'R0', 'R0')  # 8- Shiftright R0 - only carry is relevant
+    booter(my_computer, 'JMPIF', 1, 0, 0, 0)  # 9- JUMP to Address if carry is one
+    booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 1]))  # 10- to Target 1
+    booter(my_computer, 'JUMP')  # 11- JUMP to Address if carry is zero
+    booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 1]))  # 12- to Target 2
+    booter(my_computer, 'CLF')  # 13- Clear Flags TARGET 1
+    booter(my_computer, 'ADD', 'R1', 'R2')  # 14- Add R2 = R1 + R2
+    booter(my_computer, 'CLF')  # 15- Clear Flags TARGET 2
+    booter(my_computer, 'SHL', 'R1', 'R1')  # 16- Shiftleft R1 - and repeat process
+    booter(my_computer, 'SHL', 'R3', 'R3')  # 17- Shiftleft R3 - stop if carry is active
+    booter(my_computer, 'JMPIF', 1, 0, 0, 0)  # 18- JUMP to Address if carry is one
+    booter(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 19- to Goodbye
+    booter(my_computer, 'JUMP')  # 20- JUMP to Address if carry is zero (not yet done)
+    booter(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # 21- to Target 3
+    # Calculate R0=11 modulo R1=8
+    # # -1- Load R0 and R1 from RAM
+    # booter(my_computer, 'DATA', 'R0')  # 0- Load Data to R0 as Operand 1
+    # booter(my_computer, np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # 1- Data to R0 "11"
+    # booter(my_computer, 'DATA', 'R1')  # 2- Load Data to R1 as Operand 2
+    # booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # 3- Data to R1 "3"
+    # # booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # 3- Data to R1 "12"
+    # # If R1 is zero stop.
+    # booter(my_computer, 'ADD', 'R1', 'R3')  # 4- Add R1 + 0 and check if result is zero
+    # booter(my_computer, 'JMPIF', 0, 0, 0, 1)  # 5- JUMP to Address 16 stored in next byte
+    # booter(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 6- Address to which we JUMP is 22
+    # # If R1 is bigger than R0 the result is R0
+    # booter(my_computer, 'CMP', 'R1', 'R0')  # 7- Compare R1 >= R0
+    # booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 8- JUMP to Address 16 stored in next byte
+    # booter(my_computer, np.array([0, 0, 0, 1, 0, 0, 1, 1]))  # 9- Address to which we JUMP is 19
+    # # -2-  Invert R1 and add 1
+    # booter(my_computer, 'DATA', 'R2')  # 10- Load 1 to R2 to add
+    # booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 11- Data to R2 "1"
+    # booter(my_computer, 'NOT', 'R1', 'R3')  # 12- Not R2 to R3
+    # booter(my_computer, 'ADD', 'R2', 'R3')  # 13- Add R2 + R3 and store in R3 as Result
+    # #  -5-  Calculate R0=R0-R1(orig) by calculating R0+R1(inverted,incremented) as long is R0 is bigger than R1
+    # booter(my_computer, 'ADD', 'R3', 'R0')  # 14- Add R3 + R0 and store in R0 as Result
+    # booter(my_computer, 'CLF')  # 15- Clear Flags
+    # booter(my_computer, 'CMP', 'R0', 'R1')  # 16- Compare R0 >= R1
+    # booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 17- JUMP to Address stored in next byte
+    # booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # 18- Address to which we JUMP is 14
+    # #  -4-  - Save current value of R0
+    # booter(my_computer, 'DATA', 'R2')  # 19- Load Data to R2 as RAM Address
+    # booter(my_computer, np.array([0, 0, 0, 1, 1, 1, 1, 1]))  # 20- Data to R2 which is Result RAM Address
+    # booter(my_computer, 'STORE', 'R2', 'R0')  # 21- Store R0 at R2 in RAM
 
     # Goodbye Sequence
 
@@ -203,7 +231,8 @@ def run_computer():
 
     t = 0
 
-    print('Created Bits: {}'.format(Bit.bitcount)) # Switch bitcount from Bit to NAND after switch from logic functions to logic objects
+    print('Created Bits: {}'.format(
+        Bit.bitcount))  # Switch bitcount from Bit to NAND after switch from logic functions to logic objects
 
     while my_computer.RAM.return_Address(goodbye_byte)[0] == 0:
         t = t + 1
