@@ -192,8 +192,8 @@ def run_computer():
     booter(my_computer, np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # 21- GOTO Target 3
     booter(my_computer, 'XOR', 'R1', 'R1')  # 22 Target 4 XOR R1 - make sure its zero
     booter(my_computer, 'CLF')  # 23 clf
-    booter(my_computer, 'ADD', 'R2', 'R1') # 24 add R1+R2=R1
-    booter(my_computer, 'CLF')  # clf 25
+    booter(my_computer, 'ADD', 'R2', 'R1')  # 24 add R1+R2=R1
+    booter(my_computer, 'CLF')  # 25 clf
     # Calculate R0=19 modulo R1=8
     # # -1- Load R0 from RAM
     booter(my_computer, 'DATA', 'R0')  # 26- Load Data to R0 as Operand 1
@@ -202,30 +202,30 @@ def run_computer():
     booter(my_computer, 'CLF')  # 29 clf
     booter(my_computer, 'ADD', 'R1', 'R3')  # 30- Add R1 + 0 and check if result is zero
     booter(my_computer, 'JMPIF', 0, 0, 0, 1)  # 31- JUMP to Address 16 stored in next byte
-    booter(my_computer, np.array([0, 0, 0, 1, 0, 1, 1, 0]))  # 32- Address to which we JUMP is 22
+    booter(my_computer, np.array([0, 0, 1, 1, 0, 0, 0, 0]))  # 32- GOTO GOODBYE
     # If R1 is bigger than R0 the result is R0
     booter(my_computer, 'CMP', 'R1', 'R0')  # 33- Compare R1 >= R0
     booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 34- JUMP to Address 16 stored in next byte
-    booter(my_computer, np.array([0, 0, 0, 1, 0, 0, 1, 1]))  # 35- Address to which we JUMP is 19
+    booter(my_computer, np.array([0, 0, 1, 0, 1, 1, 0, 1]))  # 35- GOTO TARGET X1
     # -2-  Invert R1 and add 1
     booter(my_computer, 'DATA', 'R2')  # 36- Load 1 to R2 to add
     booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # 37- Data to R2 "1"
     booter(my_computer, 'NOT', 'R1', 'R3')  # 38- Not R2 to R3
     booter(my_computer, 'ADD', 'R2', 'R3')  # 39- Add R2 + R3 and store in R3 as Result
     #  -5-  Calculate R0=R0-R1(orig) by calculating R0+R1(inverted,incremented) as long is R0 is bigger than R1
-    booter(my_computer, 'ADD', 'R3', 'R0')  # 40- Add R3 + R0 and store in R0 as Result
+    booter(my_computer, 'ADD', 'R3', 'R0')  # 40- Add R3 + R0 and store in R0 as Result TARGET X2
     booter(my_computer, 'CLF')  # 41- Clear Flags
     booter(my_computer, 'CMP', 'R0', 'R1')  # 42- Compare R0 >= R1
     booter(my_computer, 'JMPIF', 0, 1, 0, 0)  # 43- JUMP to Address stored in next byte
-    booter(my_computer, np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # 44- Address to which we JUMP is 14
+    booter(my_computer, np.array([0, 0, 1, 0, 1, 0, 0, 0]))  # 44- GOTO TARGET X2
     #  -4-  - Save current value of R0
-    booter(my_computer, 'DATA', 'R2')  # 45- Load Data to R2 as RAM Address
+    booter(my_computer, 'DATA', 'R2')  # 45- Load Data to R2 as RAM Address TARGET X1
     booter(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 0]))  # 46- Data to R2 which is Result RAM Address
     booter(my_computer, 'STORE', 'R2', 'R0')  # 47- Store R0 at R2 in RAM
 
     # Goodbye Sequence
 
-    booter(my_computer, 'DATA', 'R3')  # 46- Load Data to R3 as RAM Address of Goodbye Store
+    booter(my_computer, 'DATA', 'R3')  # 48- Load Data to R3 as RAM Address of Goodbye Store
     booter(my_computer, np.array([1, 1, 1, 1, 1, 1, 1, 1]))  # - Goodbye Store
     booter(my_computer, 'DATA', 'R2')  # - Load Data to R2 as Goodbye Message
     booter(my_computer, np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # - Goodbye Message
