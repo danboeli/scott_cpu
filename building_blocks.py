@@ -13,14 +13,16 @@ class RAM256byte(Byte):
         self.Bit1 = Bit(1)
         self.nibblex = Nibble()
         self.nibbley = Nibble()
+        self.addr_x = Decoder4x16()
+        self.addr_y = Decoder4x16()
 
     def __call__(self, set_bit, enable_bit, input_byte, set_mar, address):
         self.MAR(set_mar, address)
         self.nibblex, self.nibbley = byte2nibble(self.MAR)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
-            self.RAM[x](set_bit, enable_bit, input_byte, addr_x, addr_y)
+            self.RAM[x](set_bit, enable_bit, input_byte, self.addr_x, self.addr_y)
             self.OutputOR(self.OutputOR, self.RAM[x])
 
         for y in range(self.size):
@@ -33,26 +35,26 @@ class RAM256byte(Byte):
 
     def initial_RAM_set(self, address, data_input):
         self.nibblex, self.nibbley = byte2nibble(address)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
-            self.RAM[x](self.Bit1, self.Bit0, data_input, addr_x, addr_y)
+            self.RAM[x](self.Bit1, self.Bit0, data_input, self.addr_x, self.addr_y)
 
     def report_Address(self, address):
         self.nibblex, self.nibbley = byte2nibble(address)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
-        for x in range(self.AddressSize ** 2):
-            if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
-                return repr(self.RAM[x].Reg.Memory)
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
+        for i in range(self.AddressSize ** 2):
+            if ((self.RAM[i].x == decoder2array(self.addr_x)).all()) & ((self.RAM[i].y == decoder2array(self.addr_y)).all()):
+                return repr(self.RAM[i].Reg.Memory)
 
     def return_Address(self, address):
         self.nibblex, self.nibbley = byte2nibble(address)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
-        for x in range(self.AddressSize ** 2):
-            if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
-                return [self.RAM[x].Reg.Memory.byte[i].state for i in range(8)]
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
+        for j in range(self.AddressSize ** 2):
+            if ((self.RAM[j].x == decoder2array(self.addr_x)).all()) & ((self.RAM[j].y == decoder2array(self.addr_y)).all()):
+                return [self.RAM[j].Reg.Memory.byte[i].state for i in range(8)]
 
 
 class FlagRegister(Nibble):

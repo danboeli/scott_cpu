@@ -9,11 +9,12 @@ class Byte:
     def __init__(self):
         self.byte = [Bit() for i in range(self.size)]
 
+    # make this reacting to byte size todo
     def __repr__(self):
         return '{}{}{}{} {}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
 
     def __add__(self, other, order='number'):
-        if order=='byte':
+        if order == 'byte':
             return '{}{}{}{} {}{}{}{}{}'.format(self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7], other)
         else:
             return '{}{}{}{} {}{}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
@@ -100,6 +101,34 @@ class Decoder2x4(Nibble):
         self.byte[3].state = s_and(op1.state, op2.state)  # 1/1
 
 
+class Decoder4x16(Byte):
+    decode_size = 4
+    size = 16
+
+    def __call__(self, in_bits):
+        in_p = np.zeros((Decoder4x16.decode_size, 2), dtype=np.bool)
+        for y in np.arange(Decoder4x16.decode_size):
+            in_p[y][0] = in_bits.byte[y].state
+            in_p[y][1] = s_not(in_bits.byte[y].state)
+
+        self.byte[0].state = s_and4(in_p[0][1], in_p[1][1], in_p[2][1], in_p[3][1])  # 0/0/0/0
+        self.byte[1].state = s_and4(in_p[0][1], in_p[1][1], in_p[2][1], in_p[3][0])  # 0/0/0/1
+        self.byte[2].state = s_and4(in_p[0][1], in_p[1][1], in_p[2][0], in_p[3][1])  # 0/0/1/0
+        self.byte[3].state = s_and4(in_p[0][1], in_p[1][1], in_p[2][0], in_p[3][0])  # 0/0/1/1
+        self.byte[4].state = s_and4(in_p[0][1], in_p[1][0], in_p[2][1], in_p[3][1])  # 0/1/0/0
+        self.byte[5].state = s_and4(in_p[0][1], in_p[1][0], in_p[2][1], in_p[3][0])  # 0/1/0/1
+        self.byte[6].state = s_and4(in_p[0][1], in_p[1][0], in_p[2][0], in_p[3][1])  # 0/1/1/0
+        self.byte[7].state = s_and4(in_p[0][1], in_p[1][0], in_p[2][0], in_p[3][0])  # 0/1/1/1
+        self.byte[8].state = s_and4(in_p[0][0], in_p[1][1], in_p[2][1], in_p[3][1])  # 1/0/0/0
+        self.byte[9].state = s_and4(in_p[0][0], in_p[1][1], in_p[2][1], in_p[3][0])  # 1/0/0/1
+        self.byte[10].state = s_and4(in_p[0][0], in_p[1][1], in_p[2][0], in_p[3][1])  # 1/0/1/0
+        self.byte[11].state = s_and4(in_p[0][0], in_p[1][1], in_p[2][0], in_p[3][0])  # 1/0/1/1
+        self.byte[12].state = s_and4(in_p[0][0], in_p[1][0], in_p[2][1], in_p[3][1])  # 1/1/0/0
+        self.byte[13].state = s_and4(in_p[0][0], in_p[1][0], in_p[2][1], in_p[3][0])  # 1/1/0/1
+        self.byte[14].state = s_and4(in_p[0][0], in_p[1][0], in_p[2][0], in_p[3][1])  # 1/1/1/0
+        self.byte[15].state = s_and4(in_p[0][0], in_p[1][0], in_p[2][0], in_p[3][0])  # 1/1/1/1
+
+
 class Enabler(Byte):
     def __init__(self):
         self.byte = [Bit() for i in range(self.size)]
@@ -146,7 +175,7 @@ class RAMbyte(Byte):
         self.y[self.addr_y] = True
 
     def __call__(self, set_bit, enable_bit, input_byte, addr_x, addr_y):
-        self.Active(checkIfactive(addr_x, addr_y, self.x, self.y))
+        self.Active(checkIfactive(decoder2array(addr_x), decoder2array(addr_y), self.x, self.y))
         self.EnableBit(self.Active, enable_bit)
         self.SetBit(self.Active, set_bit)
         self.Reg(self.SetBit, self.EnableBit, input_byte)
@@ -215,6 +244,12 @@ class Bus(Byte):
         for y in range(self.size):
             self.byte[y].state = s_or(in_byte.byte[y].state, self.byte[y].state)
 
+
+def decoder2array(a):
+    out = np.zeros(16, dtype=np.bool)
+    for i in range(16):
+        out[i] = a.byte[i].state
+    return out
 
 
 def checkIfactive(a, b, x, y):
