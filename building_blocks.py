@@ -18,7 +18,8 @@ class RAM256byte(Byte):
 
     def __call__(self, set_bit, enable_bit, input_byte, set_mar, address):
         self.MAR(set_mar, address)
-        self.nibblex, self.nibbley = byte2nibble(self.MAR)
+        self.nibblex.byte2nibble(self.MAR, 'front')
+        self.nibbley.byte2nibble(self.MAR, 'back')
         self.addr_x(self.nibblex)  # unique 8-array
         self.addr_y(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
@@ -34,14 +35,16 @@ class RAM256byte(Byte):
             self.MAR.byte[y].report(y)
 
     def initial_RAM_set(self, address, data_input):
-        self.nibblex, self.nibbley = byte2nibble(address)
+        self.nibblex.byte2nibble(address, 'front')
+        self.nibbley.byte2nibble(address, 'back')
         self.addr_x(self.nibblex)  # unique 8-array
         self.addr_y(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
             self.RAM[x](self.Bit1, self.Bit0, data_input, self.addr_x, self.addr_y)
 
     def report_Address(self, address):
-        self.nibblex, self.nibbley = byte2nibble(address)
+        self.nibblex.byte2nibble(address, 'front')
+        self.nibbley.byte2nibble(address, 'back')
         self.addr_x(self.nibblex)  # unique 8-array
         self.addr_y(self.nibbley)  # unique 8-array
         for i in range(self.AddressSize ** 2):
@@ -49,7 +52,8 @@ class RAM256byte(Byte):
                 return repr(self.RAM[i].Reg.Memory)
 
     def return_Address(self, address):
-        self.nibblex, self.nibbley = byte2nibble(address)
+        self.nibblex.byte2nibble(address, pos='front')
+        self.nibbley.byte2nibble(address, pos='back')
         self.addr_x(self.nibblex)  # unique 8-array
         self.addr_y(self.nibbley)  # unique 8-array
         for j in range(self.AddressSize ** 2):

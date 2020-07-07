@@ -69,16 +69,24 @@ class Nibble(Byte):
         return '{}{}{}{}'.format(self.byte[3], self.byte[2], self.byte[1], self.byte[0])
 
     def __add__(self, other, order='number'):
-        if order=='byte':
+        if order == 'byte':
             return '{}{}{}{}{}'.format(self.byte[0], self.byte[1], self.byte[2], self.byte[3], other)
         else:
             return '{}{}{}{}{}'.format(self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
 
     def __radd__(self, other, order='number'):
-        if order=='byte':
+        if order == 'byte':
             return '{}{}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3])
         else:
             return '{}{}{}{}{}'.format(other, self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+
+    def byte2nibble(self, in_byte, pos='front'):
+        if pos == 'back':
+            for i in range(4):
+                self.byte[i](in_byte.byte[i+4])
+        else:
+            for i in range(4):
+                self.byte[i](in_byte.byte[i])
 
 
 class Decoder3x8(Byte):
