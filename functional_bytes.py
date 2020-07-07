@@ -1,4 +1,5 @@
-from logic_functions import *
+# from logic_functions import *
+from bytes import *
 
 
 class RightShift(Byte):

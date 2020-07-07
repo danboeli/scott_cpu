@@ -1,4 +1,4 @@
-from logic_functions import *
+# from logic_functions import *
 from bits import *
 import numpy as np
 
@@ -9,22 +9,29 @@ class Byte:
     def __init__(self):
         self.byte = [Bit() for i in range(self.size)]
 
-    # make this reacting to byte size todo
-    def __repr__(self):
-        return '{}{}{}{} {}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
+    def __repr__(self, order='number'):
+        bytestring = ''
+        count = 0
+        if order == 'byte':
+            for i in range(self.size):
+                count = count + 1
+                bytestring = bytestring + '{}'.format(self.byte[i])
+                if (count % 4 == 0) & (i < self.size - 1):
+                    bytestring = bytestring + ' '
+        else:
+            for i in range(self.size - 1, -1, -1):
+                count = count + 1
+                bytestring = bytestring + '{}'.format(self.byte[i])
+                if (count % 4 == 0) & (i > 0):
+                    bytestring = bytestring + ' '
+        return bytestring
 
     def __add__(self, other, order='number'):
-        if order == 'byte':
-            return '{}{}{}{} {}{}{}{}{}'.format(self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7], other)
-        else:
-            return '{}{}{}{} {}{}{}{}{}'.format(self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
+        return self.__repr__(order) + other
 
     def __radd__(self, other, order='number'):
-        if order=='byte':
-            return '{}{}{}{}{} {}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3], self.byte[4], self.byte[5], self.byte[6], self.byte[7])
-        else:
-            return '{}{}{}{}{} {}{}{}{}'.format(other, self.byte[7], self.byte[6], self.byte[5], self.byte[4], self.byte[3], self.byte[2], self.byte[1], self.byte[0])
-            
+        return other + self.__repr__(order)
+
     def __call__(self, input_byte):
         for y in np.arange(self.size):
             self.byte[y](input_byte.byte[y])
@@ -34,12 +41,10 @@ class Byte:
             self.byte[y].state = data_input[self.size-1-y]  # Invert to allow to enter in reading order (last bit first)
 
     def get_data(self):
-        # return self.byte
         return [self.byte[i].state for i in range(self.size)]
 
 
 class MemoryByte(Byte):
-
     def __init__(self):
         self.byte = [MemoryBit() for i in range(self.size)]
 
@@ -64,21 +69,6 @@ class Register(Byte):
 
 class Nibble(Byte):
     size = 4
-
-    def __repr__(self):
-        return '{}{}{}{}'.format(self.byte[3], self.byte[2], self.byte[1], self.byte[0])
-
-    def __add__(self, other, order='number'):
-        if order == 'byte':
-            return '{}{}{}{}{}'.format(self.byte[0], self.byte[1], self.byte[2], self.byte[3], other)
-        else:
-            return '{}{}{}{}{}'.format(self.byte[3], self.byte[2], self.byte[1], self.byte[0], other)
-
-    def __radd__(self, other, order='number'):
-        if order == 'byte':
-            return '{}{}{}{}{}'.format(other, self.byte[0], self.byte[1], self.byte[2], self.byte[3])
-        else:
-            return '{}{}{}{}{}'.format(other, self.byte[3], self.byte[2], self.byte[1], self.byte[0])
 
     def byte2nibble(self, in_byte, pos='front'):
         if pos == 'back':
