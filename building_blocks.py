@@ -13,14 +13,17 @@ class RAM256byte(Byte):
         self.Bit1 = Bit(1)
         self.nibblex = Nibble()
         self.nibbley = Nibble()
+        self.addr_x = Decoder4x16()
+        self.addr_y = Decoder4x16()
 
     def __call__(self, set_bit, enable_bit, input_byte, set_mar, address):
         self.MAR(set_mar, address)
-        self.nibblex, self.nibbley = byte2nibble(self.MAR)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
+        self.nibblex.byte2nibble(self.MAR, 'front')
+        self.nibbley.byte2nibble(self.MAR, 'back')
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
-            self.RAM[x](set_bit, enable_bit, input_byte, addr_x, addr_y)
+            self.RAM[x](set_bit, enable_bit, input_byte, self.addr_x, self.addr_y)
             self.OutputOR(self.OutputOR, self.RAM[x])
 
         for y in range(self.size):
@@ -32,27 +35,30 @@ class RAM256byte(Byte):
             self.MAR.byte[y].report(y)
 
     def initial_RAM_set(self, address, data_input):
-        self.nibblex, self.nibbley = byte2nibble(address)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
+        self.nibblex.byte2nibble(address, 'front')
+        self.nibbley.byte2nibble(address, 'back')
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
         for x in range(self.AddressSize ** 2):
-            self.RAM[x](self.Bit1, self.Bit0, data_input, addr_x, addr_y)
+            self.RAM[x](self.Bit1, self.Bit0, data_input, self.addr_x, self.addr_y)
 
     def report_Address(self, address):
-        self.nibblex, self.nibbley = byte2nibble(address)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
-        for x in range(self.AddressSize ** 2):
-            if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
-                return repr(self.RAM[x].Reg.Memory)
+        self.nibblex.byte2nibble(address, 'front')
+        self.nibbley.byte2nibble(address, 'back')
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
+        for i in range(self.AddressSize ** 2):
+            if ((self.RAM[i].x == decoder2array(self.addr_x)).all()) & ((self.RAM[i].y == decoder2array(self.addr_y)).all()):
+                return repr(self.RAM[i].Reg.Memory)
 
     def return_Address(self, address):
-        self.nibblex, self.nibbley = byte2nibble(address)
-        addr_x = decode4x16(self.nibblex)  # unique 8-array
-        addr_y = decode4x16(self.nibbley)  # unique 8-array
-        for x in range(self.AddressSize ** 2):
-            if all(self.RAM[x].x == addr_x) & all(self.RAM[x].y == addr_y):
-                return [self.RAM[x].Reg.Memory.byte[i].state for i in range(8)]
+        self.nibblex.byte2nibble(address, pos='front')
+        self.nibbley.byte2nibble(address, pos='back')
+        self.addr_x(self.nibblex)  # unique 8-array
+        self.addr_y(self.nibbley)  # unique 8-array
+        for j in range(self.AddressSize ** 2):
+            if ((self.RAM[j].x == decoder2array(self.addr_x)).all()) & ((self.RAM[j].y == decoder2array(self.addr_y)).all()):
+                return [self.RAM[j].Reg.Memory.byte[i].state for i in range(8)]
 
 
 class FlagRegister(Nibble):
@@ -76,7 +82,6 @@ class FlagRegister(Nibble):
 
 
 class ArithmeticAndLogicUnit(Byte):
-
     def __init__(self):
         super().__init__()
         self.Zero = Compare0()
@@ -93,6 +98,7 @@ class ArithmeticAndLogicUnit(Byte):
         self.Adder = AddByte()
         self.Decoder = Decoder3x8()
         self.Carry_out = OR3Bit()
+        self.self_or = [OR8Bit() for i in range(8)]
 
     def __call__(self, a_byte, b_byte, carry_bit, op):
         self.Decoder(op[0], op[1], op[2])
@@ -124,9 +130,10 @@ class ArithmeticAndLogicUnit(Byte):
         self.Es[0](self.Adder, self.Decoder.byte[0])
 
         for y in np.arange(8):
-            self.byte[y].state = s_or8(self.Es[0].byte[y].state, self.Es[1].byte[y].state, self.Es[2].byte[y].state,
-                                       self.Es[3].byte[y].state, self.Es[4].byte[y].state, self.Es[5].byte[y].state,
-                                       self.Es[6].byte[y].state, 0)
+            self.self_or[y](self.Es[0].byte[y], self.Es[1].byte[y], self.Es[2].byte[y],
+                            self.Es[3].byte[y], self.Es[4].byte[y], self.Es[5].byte[y],
+                            self.Es[6].byte[y], self.Es[0].byte[y])
+            self.byte[y](self.self_or[y])
 
         self.Carry_out(self.ANDs[0], self.ANDs[1], self.ANDs[2])
 
@@ -137,8 +144,8 @@ class Clock(Nibble):
     def __init__(self):
         super().__init__()
         self.clock_delayed = Bit()
-        self.clock_set = Bit()
-        self.clock_enable = Bit()
+        self.clock_set = ANDBit()
+        self.clock_enable = ORBit()
         self.clock = Bit()
         self.time = 0
 
@@ -146,8 +153,8 @@ class Clock(Nibble):
         self.clock_delayed(self.clock)
         if self.time % 4 == 0:
             self.clock.state = (self.clock.state + 1) % 2
-        self.clock_enable.state = s_or(self.clock.state, self.clock_delayed.state)
-        self.clock_set.state = s_and(self.clock.state, self.clock_delayed.state)
+        self.clock_enable(self.clock, self.clock_delayed)
+        self.clock_set(self.clock, self.clock_delayed)
 
         self.time = self.time + 1
 
