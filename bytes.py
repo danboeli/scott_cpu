@@ -33,11 +33,11 @@ class Byte:
         return other + self.__repr__(order)
 
     def __call__(self, input_byte):
-        for y in np.arange(self.size):
+        for y in range(self.size):
             self.byte[y](input_byte.byte[y])
 
     def initial_set(self, data_input):
-        for y in np.arange(self.size):
+        for y in range(self.size):
             self.byte[y].state = data_input[self.size-1-y]  # Invert to allow to enter in reading order (last bit first)
 
     def get_data(self):
@@ -49,7 +49,7 @@ class MemoryByte(Byte):
         self.byte = [MemoryBit() for i in range(self.size)]
 
     def __call__(self, set_bit, input_byte):
-        for y in np.arange(self.size):
+        for y in range(self.size):
             self.byte[y](set_bit, input_byte.byte[y])
 
 
@@ -63,7 +63,7 @@ class Register(Byte):
         self.Memory(set_bit, input_byte)
         self.Enabler(self.Memory, enable_bit)
 
-        for y in np.arange(self.size):
+        for y in range(self.size):
             self.byte[y](self.Enabler.byte[y])
 
 
@@ -105,7 +105,7 @@ class Decoder4x16(Byte):
 
     def __call__(self, in_bits):
         in_p = np.zeros((Decoder4x16.decode_size, 2), dtype=np.bool)
-        for y in np.arange(Decoder4x16.decode_size):
+        for y in range(Decoder4x16.decode_size):
             in_p[y][0] = in_bits.byte[y].state
             in_p[y][1] = s_not(in_bits.byte[y].state)
 
@@ -133,7 +133,7 @@ class Enabler(Byte):
         self.and_bit = ANDBit()
 
     def __call__(self, input_byte, enable_bit):
-        for y in np.arange(self.size):
+        for y in range(self.size):
             self.and_bit(input_byte.byte[y], enable_bit)
             self.byte[y](self.and_bit)
 
@@ -178,7 +178,7 @@ class RAMbyte(Byte):
         self.SetBit(self.Active, set_bit)
         self.Reg(self.SetBit, self.EnableBit, input_byte)
 
-        for y in np.arange(self.size):
+        for y in range(self.size):
             self.byte[y](self.Reg.byte[y])
 
 
