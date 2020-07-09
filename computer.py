@@ -235,8 +235,8 @@ def run_computer():
 
     t = 0
 
-    print('Created Bits: {}'.format(
-        Bit.bitcount))  # Switch bitcount from Bit to NAND after switch from logic functions to logic objects
+    print('Created Transistors: {}'.format(
+        NANDBit.transistor_count))
 
     while my_computer.RAM.return_Address(goodbye_byte)[0] == 0:
         t = t + 1

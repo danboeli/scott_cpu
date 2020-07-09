@@ -16,5 +16,4 @@ programm specified during boot process via the interpreter.
 Todo: 
 
 - get rid of logic gates as functions and switch to objects
-- switch object count from the BIT to the NAND object
 - comply with python naming conventions for instances vs. objects
