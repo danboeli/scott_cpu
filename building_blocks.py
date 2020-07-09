@@ -82,7 +82,6 @@ class FlagRegister(Nibble):
 
 
 class ArithmeticAndLogicUnit(Byte):
-
     def __init__(self):
         super().__init__()
         self.Zero = Compare0()
@@ -99,6 +98,7 @@ class ArithmeticAndLogicUnit(Byte):
         self.Adder = AddByte()
         self.Decoder = Decoder3x8()
         self.Carry_out = OR3Bit()
+        self.self_or = [OR8Bit() for i in range(8)]
 
     def __call__(self, a_byte, b_byte, carry_bit, op):
         self.Decoder(op[0], op[1], op[2])
@@ -130,9 +130,10 @@ class ArithmeticAndLogicUnit(Byte):
         self.Es[0](self.Adder, self.Decoder.byte[0])
 
         for y in np.arange(8):
-            self.byte[y].state = s_or8(self.Es[0].byte[y].state, self.Es[1].byte[y].state, self.Es[2].byte[y].state,
-                                       self.Es[3].byte[y].state, self.Es[4].byte[y].state, self.Es[5].byte[y].state,
-                                       self.Es[6].byte[y].state, 0)
+            self.self_or[y](self.Es[0].byte[y], self.Es[1].byte[y], self.Es[2].byte[y],
+                            self.Es[3].byte[y], self.Es[4].byte[y], self.Es[5].byte[y],
+                            self.Es[6].byte[y], self.Es[0].byte[y])
+            self.byte[y](self.self_or[y])
 
         self.Carry_out(self.ANDs[0], self.ANDs[1], self.ANDs[2])
 
@@ -143,8 +144,8 @@ class Clock(Nibble):
     def __init__(self):
         super().__init__()
         self.clock_delayed = Bit()
-        self.clock_set = Bit()
-        self.clock_enable = Bit()
+        self.clock_set = ANDBit()
+        self.clock_enable = ORBit()
         self.clock = Bit()
         self.time = 0
 
@@ -152,8 +153,8 @@ class Clock(Nibble):
         self.clock_delayed(self.clock)
         if self.time % 4 == 0:
             self.clock.state = (self.clock.state + 1) % 2
-        self.clock_enable.state = s_or(self.clock.state, self.clock_delayed.state)
-        self.clock_set.state = s_and(self.clock.state, self.clock_delayed.state)
+        self.clock_enable(self.clock, self.clock_delayed)
+        self.clock_set(self.clock, self.clock_delayed)
 
         self.time = self.time + 1
 
