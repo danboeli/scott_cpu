@@ -28,7 +28,7 @@ class LeftShift(Byte):
         self.byte[0](shift_in)
 
 
-class State_Machine(Byte):
+class StateMachine(Byte):
     def __init__(self):
         super().__init__()
         self.Mem = [MemoryBit() for i in range(12)]
