@@ -1,8 +1,6 @@
-# Simulation of the Scott CPU / Scott Computer
-
 import cProfile
 from building_blocks import *
-from support_functions import *
+#  from support_functions import *
 import numpy as np
 
 
@@ -73,31 +71,45 @@ class Computer(Byte):
 
 class Interpreter(Byte):
     def __call__(self, cmd1, *cmd2):
-        if cmd1 == 'ADD':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # ALU 0
-        if cmd1 == 'AND':       self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # ALU 1
-        if cmd1 == 'SHR':       self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # ALU 2
-        if cmd1 == 'XOR':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # ALU 3
-        if cmd1 == 'SHL':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # ALU 4
-        if cmd1 == 'OR':        self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # ALU 5
-        if cmd1 == 'NOT':       self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))  # ALU 6
-        if cmd1 == 'CMP':       self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))  # ALU 7
+        if cmd1 == 'ADD':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 1]))  # ALU 0
+        if cmd1 == 'AND':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 1]))  # ALU 1
+        if cmd1 == 'SHR':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 1]))  # ALU 2
+        if cmd1 == 'XOR':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 1]))  # ALU 3
+        if cmd1 == 'SHL':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 1]))  # ALU 4
+        if cmd1 == 'OR':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 1]))  # ALU 5
+        if cmd1 == 'NOT':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 1]))  # ALU 6
+        if cmd1 == 'CMP':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 1]))  # ALU 7
 
-        if cmd1 == 'LOAD':      self.initial_set(
-            np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # CMD 0 Load RB from RAM Address RA
-        if cmd1 == 'JUMP':      self.initial_set(
-            np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # CMD 1 Next go to the RAM Address stored in next Byte
-        if cmd1 == 'DATA':      self.initial_set(
-            np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # CMD 2 Next Byte in RAM is data, store this in RB
-        if cmd1 == 'CLF':       self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # CMD 3 Clear Flags
-        if cmd1 == 'STORE':     self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # CMD 4 Store RB at RAM Address RA
-        if cmd1 == 'JMPIF':     self.initial_set(
-            np.array([0, 0, 0, 0, 1, 0, 1, 0]))  # CMD 5 Jump if to next RAM Address
-        if cmd1 == 'JMPR':      self.initial_set(
-            np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
-        if cmd1 == 'IN Data':   self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # CMD 7 INPUT Data
-        if cmd1 == 'OUT Data':  self.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 0]))  # CMD 7 OUTPUT Data
-        if cmd1 == 'IN Addr':   self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # CMD 7 INPUT Address
-        if cmd1 == 'OUT Addr':  self.initial_set(np.array([0, 0, 1, 1, 1, 1, 1, 0]))  # CMD 7 OUTPUT Address
+        if cmd1 == 'LOAD':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 0, 0, 0]))  # CMD 0 Load RB from RAM Address RA
+        if cmd1 == 'JUMP':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 0, 1, 0]))  # CMD 1 Next go to the RAM Address stored in next Byte
+        if cmd1 == 'DATA':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 1, 0, 0]))  # CMD 2 Next Byte in RAM is data, store this in RB
+        if cmd1 == 'CLF':
+            self.initial_set(np.array([0, 0, 0, 0, 0, 1, 1, 0]))  # CMD 3 Clear Flags
+        if cmd1 == 'STORE':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 0, 0, 0]))  # CMD 4 Store RB at RAM Address RA
+        if cmd1 == 'JMPIF':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 0, 1, 0]))  # CMD 5 Jump if to next RAM Address
+        if cmd1 == 'JMPR':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 1, 0, 0]))  # CMD 6 Next go to the RAM Address stored in RB
+        if cmd1 == 'IN Data':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # CMD 7 INPUT Data
+        if cmd1 == 'OUT Data':
+            self.initial_set(np.array([0, 0, 0, 1, 1, 1, 1, 0]))  # CMD 7 OUTPUT Data
+        if cmd1 == 'IN Addr':
+            self.initial_set(np.array([0, 0, 0, 0, 1, 1, 1, 0]))  # CMD 7 INPUT Address
+        if cmd1 == 'OUT Addr':
+            self.initial_set(np.array([0, 0, 1, 1, 1, 1, 1, 0]))  # CMD 7 OUTPUT Address
 
         if len(cmd2) == 4:
             self.byte[4].state = cmd2[0]
@@ -105,19 +117,31 @@ class Interpreter(Byte):
             self.byte[6].state = cmd2[2]
             self.byte[7].state = cmd2[3]
         if len(cmd2) == 1:
-            if cmd2[0] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
-            if cmd2[0] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
-            if cmd2[0] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
-            if cmd2[0] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
+            if cmd2[0] == 'R0':
+                self.byte[6].state, self.byte[7].state = 0, 0
+            if cmd2[0] == 'R1':
+                self.byte[6].state, self.byte[7].state = 0, 1
+            if cmd2[0] == 'R2':
+                self.byte[6].state, self.byte[7].state = 1, 0
+            if cmd2[0] == 'R3':
+                self.byte[6].state, self.byte[7].state = 1, 1
         if len(cmd2) == 2:
-            if cmd2[0] == 'R0':     self.byte[4].state, self.byte[5].state = 0, 0
-            if cmd2[0] == 'R1':     self.byte[4].state, self.byte[5].state = 0, 1
-            if cmd2[0] == 'R2':     self.byte[4].state, self.byte[5].state = 1, 0
-            if cmd2[0] == 'R3':     self.byte[4].state, self.byte[5].state = 1, 1
-            if cmd2[1] == 'R0':     self.byte[6].state, self.byte[7].state = 0, 0
-            if cmd2[1] == 'R1':     self.byte[6].state, self.byte[7].state = 0, 1
-            if cmd2[1] == 'R2':     self.byte[6].state, self.byte[7].state = 1, 0
-            if cmd2[1] == 'R3':     self.byte[6].state, self.byte[7].state = 1, 1
+            if cmd2[0] == 'R0':
+                self.byte[4].state, self.byte[5].state = 0, 0
+            if cmd2[0] == 'R1':
+                self.byte[4].state, self.byte[5].state = 0, 1
+            if cmd2[0] == 'R2':
+                self.byte[4].state, self.byte[5].state = 1, 0
+            if cmd2[0] == 'R3':
+                self.byte[4].state, self.byte[5].state = 1, 1
+            if cmd2[1] == 'R0':
+                self.byte[6].state, self.byte[7].state = 0, 0
+            if cmd2[1] == 'R1':
+                self.byte[6].state, self.byte[7].state = 0, 1
+            if cmd2[1] == 'R2':
+                self.byte[6].state, self.byte[7].state = 1, 0
+            if cmd2[1] == 'R3':
+                self.byte[6].state, self.byte[7].state = 1, 1
 
 
 class BootProcess:
@@ -143,7 +167,7 @@ class BootProcess:
         if isinstance(cmd1, (np.ndarray, np.generic)):  # For data
             self.interpreter.initial_set(cmd1)
 
-        computer.RAM.initial_RAM_set(self.Address, self.interpreter)
+        computer.RAM.initial_ram_set(self.Address, self.interpreter)
 
         self.AddressPointer = self.AddressPointer + 1
 
@@ -238,7 +262,7 @@ def run_computer():
     print('Created Transistors: {}'.format(
         NANDBit.transistor_count))
 
-    while my_computer.RAM.return_Address(goodbye_byte)[0] == 0:
+    while my_computer.RAM.return_address(goodbye_byte)[0] == 0:
         t = t + 1
         if ((t - 1) % 48 == 0) & (t > 1):
             print('t = {}'.format(t))
@@ -252,7 +276,7 @@ def run_computer():
             print('R1 = ' + my_computer.R[1].Memory)
             print('R2 = ' + my_computer.R[2].Memory)
             print('R3 = ' + my_computer.R[3].Memory)
-            print('RAM@[1, 1, 1, 1, 1, 1, 1, 0] = ' + my_computer.RAM.report_Address(multi_purpose_byte))
+            print('RAM@[1, 1, 1, 1, 1, 1, 1, 0] = ' + my_computer.RAM.report_address(multi_purpose_byte))
 
         my_computer()
 

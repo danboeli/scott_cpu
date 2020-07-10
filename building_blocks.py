@@ -30,11 +30,11 @@ class RAM256byte(Byte):
             self.byte[y](self.OutputOR.byte[y])
             self.OutputOR.byte[y].state = 0
 
-    def reportMAR(self):
-        for y in range(self.size-1, -1, -1):
+    def report_mar(self):
+        for y in range(self.size - 1, -1, -1):
             self.MAR.byte[y].report(y)
 
-    def initial_RAM_set(self, address, data_input):
+    def initial_ram_set(self, address, data_input):
         self.nibblex.byte2nibble(address, 'front')
         self.nibbley.byte2nibble(address, 'back')
         self.addr_x(self.nibblex)  # unique 8-array
@@ -42,22 +42,24 @@ class RAM256byte(Byte):
         for x in range(self.AddressSize ** 2):
             self.RAM[x](self.Bit1, self.Bit0, data_input, self.addr_x, self.addr_y)
 
-    def report_Address(self, address):
+    def report_address(self, address):
         self.nibblex.byte2nibble(address, 'front')
         self.nibbley.byte2nibble(address, 'back')
         self.addr_x(self.nibblex)  # unique 8-array
         self.addr_y(self.nibbley)  # unique 8-array
         for i in range(self.AddressSize ** 2):
-            if ((self.RAM[i].x == decoder2array(self.addr_x)).all()) & ((self.RAM[i].y == decoder2array(self.addr_y)).all()):
+            if ((self.RAM[i].x == decoder2array(self.addr_x)).all()) & (
+            (self.RAM[i].y == decoder2array(self.addr_y)).all()):
                 return repr(self.RAM[i].Reg.Memory)
 
-    def return_Address(self, address):
+    def return_address(self, address):
         self.nibblex.byte2nibble(address, pos='front')
         self.nibbley.byte2nibble(address, pos='back')
         self.addr_x(self.nibblex)  # unique 8-array
         self.addr_y(self.nibbley)  # unique 8-array
         for j in range(self.AddressSize ** 2):
-            if ((self.RAM[j].x == decoder2array(self.addr_x)).all()) & ((self.RAM[j].y == decoder2array(self.addr_y)).all()):
+            if ((self.RAM[j].x == decoder2array(self.addr_x)).all()) & (
+            (self.RAM[j].y == decoder2array(self.addr_y)).all()):
                 return [self.RAM[j].Reg.Memory.byte[i].state for i in range(8)]
 
 
@@ -186,7 +188,7 @@ class ControlUnit(Byte):
     def __init__(self):
         super(ControlUnit, self).__init__()
         self.clock = Clock()
-        self.State_Machine = State_Machine()
+        self.State_Machine = StateMachine()
         self.Bus1bit = OR4Bit()
         self.Enable_RAM = OR5Bit()
         self.Enable_IAR = OR4Bit()
@@ -277,7 +279,7 @@ class ControlUnit(Byte):
         self.IO_INPUT = NOTBit()  # I/O Identify INPUT
         self.IO_OUTPUT = Bit()  # I/O Identify OUTPUT
         self.IO_DATA_ADDRESS = Bit()  # I/O Identify OUTPUT
-        self.AND_STEP5_IO = AND3Bit() # Step 5 I/O INPUT
+        self.AND_STEP5_IO = AND3Bit()  # Step 5 I/O INPUT
         self.IOClock_Set = ANDBit()  # Step 4  I/O OUTPUT
         self.IOClock_Enable = ANDBit()  # Step 5 I/O INPUT
         self.Enable_RegB_IO = ANDBit()  # Step 4 I/O OUTPUT
@@ -382,7 +384,7 @@ class ControlUnit(Byte):
         self.Set_IAR5_JMPIF(self.clock.clock_set, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
         self.Set_IAR6_JMPIF(self.clock.clock_set, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
         self.Set_IAR(self.Set_IAR_IAR_ADV, self.Set_IAR_DATA, self.Set_IAR_JMPR,
-                            self.Set_IAR_JUMP, self.Set_IAR5_JMPIF, self.Set_IAR6_JMPIF)
+                     self.Set_IAR_JUMP, self.Set_IAR5_JMPIF, self.Set_IAR6_JMPIF)
 
         self.Set_IR(self.clock.clock_set, self.State_Machine.byte[2])  # Step2
 
@@ -393,18 +395,23 @@ class ControlUnit(Byte):
         self.Enable_RegB_STORE(self.State_Machine.byte[5], self.NonALUCodes[1])  # Step 5   STORE
         self.Enable_RegB_JMPR(self.State_Machine.byte[4], self.NonALUCodes[3])  # Step 4 JMPR
         self.Enable_RegB_IO(self.clock.clock_enable, self.AND_STEP4_IO)  # Step 4 I/O OUTPUT
-        self.Enable_RegB(self.Enable_RegB_STORE, self.Enable_RegB_ALU, self.Enable_RegB_JMPR, self.Enable_RegB_IO)  # OR over Steps
+        self.Enable_RegB(self.Enable_RegB_STORE, self.Enable_RegB_ALU, self.Enable_RegB_JMPR,
+                         self.Enable_RegB_IO)  # OR over Steps
         self.LOAD_or_STORE(self.NonALUCodes[0], self.NonALUCodes[1])
         self.Enable_RegA_ALU(IR.byte[0], self.State_Machine.byte[5])  # Step5  ALU
         self.Set_Flags_ALU(self.clock.clock_set, IR.byte[0], self.State_Machine.byte[5])  # Step5  ALU
         self.Set_Flags_CLF(self.clock.clock_set, self.NonALUCodes[6], self.State_Machine.byte[4])  # Step4  CLF
         self.Set_Flags(self.Set_Flags_ALU, self.Set_Flags_CLF)  # OR over Steps
 
-        self.Set_CarryFlag_PostALU(self.clock.clock_set, IR.byte[0], self.State_Machine.byte[6])  # Step6 Delayed CarryIn Flag
-        self.Set_CarryFlag_CLF(self.clock.clock_set, self.NonALUCodes[6], self.State_Machine.byte[4])  # Delayed CarryIn Flag Reset
+        self.Set_CarryFlag_PostALU(self.clock.clock_set, IR.byte[0],
+                                   self.State_Machine.byte[6])  # Step6 Delayed CarryIn Flag
+        self.Set_CarryFlag_CLF(self.clock.clock_set, self.NonALUCodes[6],
+                               self.State_Machine.byte[4])  # Delayed CarryIn Flag Reset
         self.Set_CarryFlag(self.Set_CarryFlag_PostALU, self.Set_CarryFlag_CLF)
-        self.Enable_CarryFlag(self.clock.clock_enable, IR.byte[0], self.State_Machine.byte[5]) # CarryIn to ALU is enabled only in ALU Command Step 5
-        self.AND_STEP5_ALU(IR.byte[0], self.State_Machine.byte[5])  # Avoid feedback loop: Step 5 and ALU Instruction: Disable carry flag
+        self.Enable_CarryFlag(self.clock.clock_enable, IR.byte[0],
+                              self.State_Machine.byte[5])  # CarryIn to ALU is enabled only in ALU Command Step 5
+        self.AND_STEP5_ALU(IR.byte[0], self.State_Machine.byte[
+            5])  # Avoid feedback loop: Step 5 and ALU Instruction: Disable carry flag
 
         self.Enable_RegA_LOAD_STORE(self.State_Machine.byte[4], self.LOAD_or_STORE)  # Step 4  LOAD AND STORE
         self.Enable_RegA(self.Enable_RegA_ALU, self.Enable_RegA_LOAD_STORE)  # OR over Steps
@@ -418,14 +425,15 @@ class ControlUnit(Byte):
         self.Set_ACC_ALU_Operation(self.clock.clock_set, IR.byte[0], self.State_Machine.byte[5])  # Step5  ALU
         self.Set_ACC_DATA(self.clock.clock_set, self.AND_STEP4_DATA)  # Step 4 DATA
         self.Set_ACC_JMPIF(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
-        self.Set_ACC(self.Set_ACC_ALU_Operation, self.Set_ACC_Advance_IAR, self.Set_ACC_DATA, self.Set_ACC_JMPIF)  # OR over Steps
+        self.Set_ACC(self.Set_ACC_ALU_Operation, self.Set_ACC_Advance_IAR, self.Set_ACC_DATA,
+                     self.Set_ACC_JMPIF)  # OR over Steps
 
         self.Enable_ACC_DATA(self.clock.clock_enable, self.AND_STEP6_DATA)  # Step 6 DATA
         self.Enable_ACC_Advance_IAR(self.clock.clock_enable, self.State_Machine.byte[3])  # Step3
         self.Enable_ACC_ALU_Operation(self.Set_RegB_ALU, self.clock.clock_enable)  # Step6   ALU
         self.Enable_ACC_JMPIF(self.clock.clock_enable, self.AND_STEP5_JMPIF)  # Step 5 JMPIF
         self.Enable_ACC(self.Enable_ACC_ALU_Operation, self.Enable_ACC_JMPIF,
-                               self.Enable_ACC_Advance_IAR, self.Enable_ACC_DATA)  # OR over Steps
+                        self.Enable_ACC_Advance_IAR, self.Enable_ACC_DATA)  # OR over Steps
 
         self.Set_MAR_ADVANCE_IAR(self.clock.clock_set, self.State_Machine.byte[1])  # Step1
         self.Set_MAR_LOAD_and_STORE(self.clock.clock_set, self.Enable_RegA_LOAD_STORE)  # Step 4  LOAD and STORE
@@ -433,7 +441,7 @@ class ControlUnit(Byte):
         self.Set_MAR_JUMP(self.clock.clock_set, self.AND_STEP4_JUMP)  # Step 4 JUMP
         self.Set_MAR_JMPIF(self.clock.clock_set, self.AND_STEP4_JMPIF)  # Step 4 JMPIF
         self.Set_MAR(self.Set_MAR_ADVANCE_IAR, self.Set_MAR_LOAD_and_STORE,
-                            self.Set_MAR_DATA, self.Set_MAR_JUMP, self.Set_MAR_JMPIF)  # OR over Steps
+                     self.Set_MAR_DATA, self.Set_MAR_JUMP, self.Set_MAR_JMPIF)  # OR over Steps
 
         self.Enable_RAM_DATA(self.clock.clock_enable, self.AND_STEP5_DATA)  # Step 5 DATA
         self.Enable_RAM_ADVANCE_IAR(self.clock.clock_enable, self.State_Machine.byte[2])  # Step2
@@ -441,7 +449,7 @@ class ControlUnit(Byte):
         self.Enable_RAM_JUMP(self.clock.clock_enable, self.AND_STEP5_JUMP)  # Step 5    JUMP
         self.Enable_RAM_JMPIF(self.clock.clock_enable, self.AND_STEP6_JMPIF)  # Step 6 JMPIF
         self.Enable_RAM(self.Enable_RAM_ADVANCE_IAR, self.Enable_RAM_LOAD, self.Enable_RAM_DATA,
-                               self.Enable_RAM_JUMP, self.Enable_RAM_JMPIF)  # OR over Steps
+                        self.Enable_RAM_JUMP, self.Enable_RAM_JMPIF)  # OR over Steps
 
         self.Set_RAM(self.Enable_RegB_STORE, self.clock.clock_set)  # Step 5    STORE
 
@@ -469,6 +477,3 @@ class ControlUnit(Byte):
         self.Enable_R[1](self.Enable_RA[1], self.Enable_RB[1])
         self.Enable_R[2](self.Enable_RA[2], self.Enable_RB[2])
         self.Enable_R[3](self.Enable_RA[3], self.Enable_RB[3])
-
-
-

@@ -156,7 +156,7 @@ class OR16Bit(Bit):
         super().__init__(init_state)
         self.OR0 = OR8Bit()
         self.OR1 = OR8Bit()
-        self.OR2 = OR8Bit()
+        self.OR2 = ORBit()
 
     def __call__(self, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16):
         self.OR0(a1, a2, a3, a4, a5, a6, a7, a8)
